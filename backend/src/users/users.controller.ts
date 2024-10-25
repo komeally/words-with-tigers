@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Param, Body, Put, Delete, HttpCode, HttpStatus, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { LocalAuthGuard } from 'src/auth/auth.guard';
+import { LocalAuthGuard } from 'src/auth/local-auth.guard';
 import { Public } from 'src/auth/public.decorator';
 
 @Controller('users')
