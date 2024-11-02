@@ -2,20 +2,33 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from './schemas/user.schema';
+import * as bcrypt from 'bcrypt';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>, private readonly jwtService: JwtService) {}
 
-  async createUser(username: string, password: string) {
-    const existingUser = await this.userModel.findOne({username: username});
-
+  async createUser(username: string, password: string): Promise<{ access_token: string }> {
+    // Check if user already exists
+    const existingUser = await this.userModel.findOne({ username });
     if (existingUser) {
-        throw new ConflictException('Username already exists');
+      throw new ConflictException('Username already exists');
     }
 
-    const newUser = new this.userModel({ username, password });
-    return newUser.save();
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the new user and save it
+    const newUser = new this.userModel({ username, password: hashedPassword });
+    await newUser.save();
+
+    // Generate JWT token upon successful registration
+    const payload = { username: newUser.username, sub: newUser._id };
+    const accessToken = this.jwtService.sign(payload);
+
+    // Return the token to the frontend
+    return { access_token: accessToken };
   }
 
   async getUserById(userId: string) {

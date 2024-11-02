@@ -1,5 +1,11 @@
-<svg width="63" height="62" viewBox="0 0 63 62" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="63" height="62" fill="white"/>
-<path d="M49.875 28.4166H13.125C10.2255 28.4166 7.875 30.7298 7.875 33.5833V51.6666C7.875 54.5201 10.2255 56.8333 13.125 56.8333H49.875C52.7745 56.8333 55.125 54.5201 55.125 51.6666V33.5833C55.125 30.7298 52.7745 28.4166 49.875 28.4166Z" stroke="black" stroke-opacity="0.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M18.375 28.4166V18.0833C18.375 14.6576 19.7578 11.3722 22.2192 8.94983C24.6806 6.52749 28.019 5.16663 31.5 5.16663C34.981 5.16663 38.3194 6.52749 40.7808 8.94983C43.2422 11.3722 44.625 14.6576 44.625 18.0833V28.4166" stroke="black" stroke-opacity="0.5" stroke-linecap="round" stroke-linejoin="round"/>
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg fill="#000000" height="800px" width="800px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 viewBox="0 0 330 330" xml:space="preserve">
+<g id="XMLID_509_">
+	<path id="XMLID_510_" d="M65,330h200c8.284,0,15-6.716,15-15V145c0-8.284-6.716-15-15-15h-15V85c0-46.869-38.131-85-85-85
+		S80,38.131,80,85v45H65c-8.284,0-15,6.716-15,15v170C50,323.284,56.716,330,65,330z M180,234.986V255c0,8.284-6.716,15-15,15
+		s-15-6.716-15-15v-20.014c-6.068-4.565-10-11.824-10-19.986c0-13.785,11.215-25,25-25s25,11.215,25,25
+		C190,223.162,186.068,230.421,180,234.986z M110,85c0-30.327,24.673-55,55-55s55,24.673,55,55v45H110V85z"/>
+</g>
 </svg>

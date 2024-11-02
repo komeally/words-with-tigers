@@ -1,15 +1,20 @@
 <div class="form-container">
-    <form (submit)="onSubmit()">
-      <mat-form-field>
-        <mat-label>Username</mat-label>
-        <input matInput placeholder="Username" [(ngModel)]="username" name="username" required>
-      </mat-form-field>
-  
-      <mat-form-field>
-        <mat-label>Password</mat-label>
-        <input matInput type="password" placeholder="Password" [(ngModel)]="password" name="password" required>
-      </mat-form-field>
-  
-      <button mat-raised-button color="primary">Login</button>
-    </form>
-</div>  
+  <form>
+      <!-- Username Field -->
+      <div class="input-field">
+          <img src="/assets/images/tiger.svg" alt="Tiger Icon" class="input-icon">
+          <input type="text" placeholder="Username" class="input-text">
+      </div>
+
+      <!-- Password Field -->
+      <div class="input-field">
+          <img src="/assets/images/lock.svg" alt="Password Icon" class="input-icon">
+          <input type="password" placeholder="Password" class="input-text">
+      </div>
+
+      <div class="button-container">
+        <button class="button">Log In</button>
+        <button class="button">Register</button>
+    </div>
+  </form>
+</div>

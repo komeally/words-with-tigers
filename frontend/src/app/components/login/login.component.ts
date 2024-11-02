@@ -1,31 +1,45 @@
-// login.component.ts
-import { Component, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { UsersService } from '../../services/users.service';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule], // Add other modules if necessary
+  imports: [CommonModule, FormsModule],
   templateUrl: './login.component.html',
+  styleUrl: './login.component.scss',
 })
 export class LoginComponent {
-  loginForm: FormGroup;
-  private authService = inject(AuthService);
+  username: string = '';
+  password: string = '';
 
-  constructor(private fb: FormBuilder) {
-    this.loginForm = this.fb.group({
-      username: [''],
-      password: [''],
-    });
+  constructor(private authService: AuthService, private usersService: UsersService) {}
+
+  login() {
+    if (this.username && this.password) {
+      this.authService.login(this.username, this.password).subscribe({
+        next: (response) => {
+          console.log('Login successful:', response);
+          localStorage.setItem('authToken', response.token);
+        },
+        error: (error) => {
+          console.error('Login failed:', error);
+        },
+      });
+    }
   }
 
-  onSubmit() {
-    if (this.loginForm.valid) {
-      const { username, password } = this.loginForm.value;
-      this.authService.login(username, password).subscribe((response) => {
-        // Handle login response here, e.g., store token in localStorage
+  register() {
+    if (this.username && this.password) {
+      this.usersService.registerUser(this.username, this.password).subscribe({
+        next: (response) => {
+          console.log('Registration successful:', response);
+        },
+        error: (error) => {
+          console.error('Registration failed:', error);
+        },
       });
     }
   }

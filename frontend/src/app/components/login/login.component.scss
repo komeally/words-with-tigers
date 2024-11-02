@@ -1,6 +1,66 @@
 .form-container {
+    position: relative;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 1em;
     background-color: white;
     border-radius: 16px;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 20px;
+    box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.15);
+    padding: 10em;
+    padding-top: 3em;
+    padding-bottom: 2em;
+    max-width: fit-content;
+}
+
+.input-field {
+    display: flex;
+    align-items: center;
+    border: 1px solid #B7B7B7;
+    border-radius: 16px;
+    padding: 20px; /* Increased padding for larger input area */
+    margin-bottom: 30px; /* Increased space between fields */
+}
+
+.input-icon {
+    width: 32px; /* Larger icon */
+    height: 32px;
+    margin-right: 15px;
+    opacity: 0.5;
+}
+
+.input-text {
+    border: none;
+    outline: none;
+    font-size: 20px; /* Larger text size */
+    color: black;
+    width: 100%;
+    font-family: "Alata", sans-serif;
+    background-color: transparent;
+
+    &::placeholder {
+        color: #B7B7B7;
+    }
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px; /* Space between input fields and buttons */
+}
+
+.button {
+    padding: 15px 30px; /* Increased padding for larger button */
+    font-size: 1.25rem; /* Larger button text */
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: "Alata", sans-serif;
+    background: linear-gradient(90deg, #E7762E 0%, #FFFFFF 100%);
+    outline: none;
+    transition: background-color 0.3s ease;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.button:hover {
+    background: linear-gradient(90deg, #D5651E 0%, #F1F1F1 100%);
 }
