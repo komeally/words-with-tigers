@@ -1,20 +1,38 @@
 <div class="form-container">
   <form>
-      <!-- Username Field -->
-      <div class="input-field">
-          <img src="/assets/images/tiger.svg" alt="Tiger Icon" class="input-icon">
-          <input type="text" placeholder="Username" class="input-text">
-      </div>
+    <!-- Username Field -->
+    <div class="input-field">
+      <img src="/assets/images/tiger.svg" alt="Tiger Icon" class="input-icon" />
+      <input
+        type="text"
+        placeholder="Username"
+        [(ngModel)]="username"
+        name="username"
+        class="input-text"
+      />
+    </div>
 
-      <!-- Password Field -->
-      <div class="input-field">
-          <img src="/assets/images/lock.svg" alt="Password Icon" class="input-icon">
-          <input type="password" placeholder="Password" class="input-text">
-      </div>
+    <!-- Password Field -->
+    <div class="input-field">
+      <img src="/assets/images/lock.svg" alt="Password Icon" class="input-icon" />
+      <input
+        type="password"
+        placeholder="Password"
+        [(ngModel)]="password"
+        name="password"
+        class="input-text"
+      />
+    </div>
 
-      <div class="button-container">
-        <button class="button">Log In</button>
-        <button class="button">Register</button>
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <!-- Button Container -->
+    <div class="button-container">
+      <button (click)="login()" type="button" class="button">Log In</button>
+      <button (click)="register()" type="button" class="button">Register</button>
     </div>
   </form>
 </div>

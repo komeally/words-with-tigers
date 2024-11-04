@@ -7,9 +7,12 @@ import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>, private readonly jwtService: JwtService) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    private readonly jwtService: JwtService
+  ) {}
 
-  async createUser(username: string, password: string): Promise<{ access_token: string }> {
+  async createUser(username: string, password: string) {
     // Check if user already exists
     const existingUser = await this.userModel.findOne({ username });
     if (existingUser) {
@@ -22,13 +25,6 @@ export class UsersService {
     // Create the new user and save it
     const newUser = new this.userModel({ username, password: hashedPassword });
     await newUser.save();
-
-    // Generate JWT token upon successful registration
-    const payload = { username: newUser.username, sub: newUser._id };
-    const accessToken = this.jwtService.sign(payload);
-
-    // Return the token to the frontend
-    return { access_token: accessToken };
   }
 
   async getUserById(userId: string) {
