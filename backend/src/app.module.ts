@@ -7,6 +7,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { LobbyModule } from './lobby/lobby.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { AppService } from './app.service';
     }),
     UsersModule,
     AuthModule,
+    LobbyModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
