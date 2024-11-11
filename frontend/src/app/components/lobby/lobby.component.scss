@@ -1,0 +1,33 @@
+.lobby {
+    position: relative;
+    padding-top: 5em;
+    display: flex;
+    justify-content: space-around;
+}
+
+.lobby-container {
+    background: rgba(255, 100, 0, 0.74);
+    padding: 15em 12em 30em;
+    border-radius: 15px;
+    position: relative;
+}
+
+.lobby-header {
+    font-size: 2rem;
+    font-family: "Alata", sans-serif;
+    color: #000;
+    text-align: left;
+    position: absolute;
+    top: 0.25em;
+    left: 0.5em;
+    width: 100%;
+}
+
+.lobby-header::after {
+    content: '';
+    display: block;
+    width: 90%;
+    height: 2px;
+    background-color: #000;
+    margin-top: 0.125em;
+}

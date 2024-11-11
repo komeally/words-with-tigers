@@ -1,0 +1,16 @@
+.button {
+    padding: 15px 30px;
+    font-size: 1.25rem;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-family: "Alata", sans-serif;
+    background: linear-gradient(90deg, #E7762E 0%, #FFFFFF 100%);
+    outline: none;
+    transition: background-color 0.3s ease;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.button:hover {
+    background: linear-gradient(90deg, #D5651E 0%, #F1F1F1 100%);
+}

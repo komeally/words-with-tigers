@@ -3,11 +3,13 @@ import { AuthService } from '../../services/auth/auth.service';
 import { UsersService } from '../../services/users.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ButtonComponent } from '../shared/button/button.component';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ButtonComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
@@ -18,7 +20,8 @@ export class LoginComponent {
 
   constructor(
     private authService: AuthService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private router: Router
   ) {}
 
   login() {
@@ -26,8 +29,9 @@ export class LoginComponent {
       this.authService.login(this.username, this.password).subscribe({
         next: (response) => {
           console.log('Login successful:', response);
-          localStorage.setItem('authToken', response.access_token);
+          localStorage.setItem('access_token', response.access_token);
           this.errorMessage = null; // Clear error on success
+          this.router.navigate(['/lobby']);
         },
         error: (error) => {
           console.error('Login failed:', error);

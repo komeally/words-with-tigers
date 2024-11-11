@@ -5,6 +5,7 @@ import { ChatService } from './chat.service';
 import { AuthService } from 'src/auth/auth.service';
 
 @WebSocketGateway({
+  namespace: '/chat',
   cors: {
     origin: 'http://localhost:4200',
   },

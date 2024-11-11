@@ -31,8 +31,8 @@
 
     <!-- Button Container -->
     <div class="button-container">
-      <button (click)="login()" type="button" class="button">Log In</button>
-      <button (click)="register()" type="button" class="button">Register</button>
+      <app-button text="Log In" (buttonClick)="login()"></app-button>
+      <app-button text="Register" (buttonClick)="register()"></app-button>
     </div>
   </form>
 </div>
