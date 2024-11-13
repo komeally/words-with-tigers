@@ -16,22 +16,21 @@ export class LobbyComponent implements OnInit, OnDestroy {
   constructor(private lobbyService: LobbyService) {}
 
   ngOnInit(): void {
-    // Join the lobby and get the initial list of players
-    this.lobbyService.joinLobby();
+    // Connect to the lobby WebSocket
+    this.lobbyService.connectToLobby();
 
     // Listen for the current list of players when connected
-    this.lobbyService.onCurrentPlayers().subscribe((players) => {
-      this.players = players;
-    });
-
-    // Listen for updates to the player list
-    this.lobbyService.onUpdatePlayerList().subscribe((players) => {
+    this.lobbyService.onPlayerListUpdate().subscribe((players) => {
       this.players = players;
     });
   }
 
   ngOnDestroy(): void {
-    // Disconnect the socket when the component is destroyed
-    this.lobbyService.disconnect();
+    // Disconnect from the lobby WebSocket when the component is destroyed
+    this.lobbyService.disconnectFromLobby();
+  }
+
+  sendMessage(): void {
+    console.log("Test");
   }
 }

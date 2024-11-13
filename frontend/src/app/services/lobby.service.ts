@@ -1,51 +1,45 @@
-// src/app/services/lobby.service.ts
 import { Injectable } from '@angular/core';
-import { io, Socket } from 'socket.io-client';
 import { Observable } from 'rxjs';
-
-const BACKEND_URL = 'http://localhost:3000';
+import { SocketService } from './socket.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LobbyService {
-  private socket: Socket;
+  constructor(private socketService: SocketService) {}
 
-  constructor() {
-    this.socket = io(`${BACKEND_URL}/lobby`, {
-      auth: {
-        token: localStorage.getItem('access_token'), // Assuming you store the JWT in localStorage
-      },
-    });
-  }
-
-  // Emit an event to join the lobby
-  joinLobby(): void {
-    this.socket.emit('joinLobby');
-  }
-
-  // Listen for the list of current players
-  onCurrentPlayers(): Observable<string[]> {
-    return new Observable((observer) => {
-      this.socket.on('currentPlayers', (players: string[]) => {
-        observer.next(players);
+  // Connect to the lobby WebSocket namespace
+  connectToLobby(): void {
+    const socket = this.socketService.connect('lobby');
+    if (socket) {
+      socket.on('currentPlayers', (players: string[]) => {
+        console.log('Current players:', players);
+        // Additional code to update component state or emit events
       });
-    });
-  }
 
-  // Listen for updates to the player list
-  onUpdatePlayerList(): Observable<string[]> {
-    return new Observable((observer) => {
-      this.socket.on('updatePlayerList', (players: string[]) => {
-        observer.next(players);
+      socket.on('updatePlayerList', (players: string[]) => {
+        console.log('Updated player list:', players);
+        // Additional code to handle player list updates
       });
-    });
-  }
-
-  // Clean up the connection when the service is destroyed
-  disconnect(): void {
-    if (this.socket) {
-      this.socket.disconnect();
+    } else {
+      console.warn('Unable to connect to lobby: invalid or expired token');
     }
+  }
+
+  // Disconnect from the lobby WebSocket namespace
+  disconnectFromLobby(): void {
+    this.socketService.disconnect();
+  }
+
+  // Observable for player updates (optional if you want to make it reactive)
+  onPlayerListUpdate(): Observable<string[]> {
+    return new Observable((observer) => {
+      const socket = this.socketService.getSocket();
+      if (socket) {
+        socket.on('updatePlayerList', (players: string[]) => {
+          observer.next(players);
+        });
+      }
+    });
   }
 }
