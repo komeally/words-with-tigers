@@ -35,12 +35,29 @@ export class AuthService {
     }
   }
 
-  async authenticateSocket(socket: Socket) {
-    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
+  async authenticateSocket(socket: Socket): Promise<void> {
+    const token = socket.handshake.auth.token; // Retrieve the token from socket auth
     if (!token) {
-      throw new Error('No token provided');
+      throw new UnauthorizedException('Token not provided');
     }
-    const decoded = await this.verifyToken(token);
-    socket.data.user = decoded;
+
+    try {
+      // Verify and decode token
+      const decoded = this.jwtService.verify(token);
+      
+      // Retrieve the user by ID from the token payload
+      const user = await this.usersService.getUserById(decoded.sub);
+      
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      // Attach the full user data and token to the socket's data
+      socket.data.user = user;
+      socket.data.access_token = token;
+      socket.data.roomId = socket.handshake.auth.roomId || 'lobby';
+    } catch (error) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
   }
 }

@@ -1,21 +1,4 @@
 <div class="lobby">
-    <div class="lobby-container">
-        <div class="lobby-header">Play with Tigers</div>
-        <div class="lobby-users">
-            <h3>Players in Lobby:</h3>
-            <ul>
-                <li *ngFor="let player of players">{{ player }}</li>
-            </ul>
-        </div>
-    </div>
-    <div class="lobby-container">
-        <div class="lobby-header">Chat with Tigers</div>
-        <div class="message-container">
-            <!-- Chat messages will be dynamically added here -->
-        </div>
-        <div class="message-input">
-            <input type="text" placeholder="Message..." />
-            <app-button>Send</app-button>
-        </div>
-    </div>
+    <lobby-players></lobby-players>
+    <app-chat></app-chat>
 </div>

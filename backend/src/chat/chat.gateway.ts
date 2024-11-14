@@ -29,17 +29,49 @@ export class ChatGateway implements OnGatewayInit {
     console.log('Chat Gateway Initialized');
   }
 
+  async handleConnection(@ConnectedSocket() client: Socket) {
+    const userId = client.data.user.id;
+    const roomId = client.data.roomId || 'lobby';
+  
+    // Add the user to the room
+    client.join(roomId);
+  
+    // Retrieve past messages if more than two users are connected in the room
+    const activeUserCount = await this.getActiveUserCountInLobby(roomId);
+    if (activeUserCount > 2) {
+      const messages = await this.chatService.getMessagesBetweenUsers(userId, null, roomId);
+      client.emit('loadChatHistory', messages);
+    }
+  
+    console.log(`User ${userId} connected to room ${roomId}`);
+  }
+
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { recipient: string; content: string }
+    @MessageBody() data: { content: string }
   ) {
-    const sender = client.data.user.id; // Assuming user ID is set in `socket.data` after auth
+    const senderId = client.data.user.id;
+    const roomId = client.data.roomId || 'lobby';  // Default to 'lobby' if no specific room is provided
 
-    // Store message in the database
-    const savedMessage = await this.chatService.saveMessage(sender, data.recipient, data.content);
+    // Store the message in the database with the roomId
+    const savedMessage = await this.chatService.saveMessage(senderId, null, data.content, roomId);
 
-    // Emit message to recipient
-    this.server.to(data.recipient).emit('receiveMessage', savedMessage);
+    // Check the number of active users in the room
+    const activeUserCount = await this.getActiveUserCountInLobby(roomId);
+
+    if (activeUserCount > 1) {
+      // If other users are in the room, broadcast to the room
+      this.server.to(roomId).emit('receiveMessage', savedMessage);
+    } else {
+      // If only the sender is present, emit the message back to them only
+      client.emit('receiveMessage', savedMessage);
+    }
+  }
+
+  // Helper function to count active users in the lobby (room)
+  async getActiveUserCountInLobby(roomId: string): Promise<number> {
+    const sockets = await this.server.in(roomId).fetchSockets();
+    return sockets.length;
   }
 }
