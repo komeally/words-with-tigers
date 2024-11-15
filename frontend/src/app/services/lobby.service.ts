@@ -28,13 +28,13 @@ export class LobbyService {
 
   // Disconnect from the lobby WebSocket namespace
   disconnectFromLobby(): void {
-    this.socketService.disconnect();
+    this.socketService.disconnect('lobby');
   }
 
   // Observable for player updates (optional if you want to make it reactive)
   onPlayerListUpdate(): Observable<string[]> {
     return new Observable((observer) => {
-      const socket = this.socketService.getSocket();
+      const socket = this.socketService.getSocket('lobby');
       if (socket) {
         socket.on('updatePlayerList', (players: string[]) => {
           observer.next(players);

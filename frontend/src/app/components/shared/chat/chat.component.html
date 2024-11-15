@@ -2,10 +2,13 @@
 <div class="chat-container">
     <div class="chat-header">Chat with Tigers</div>
     <div class="message-container">
-        <!-- Chat messages will be dynamically added here -->
+        <div *ngFor="let message of messages" class="message">
+            <small class="timestamp">{{ message.timestamp | date: 'short' }}</small>
+            <strong>{{ message.sender }}</strong>: {{ message.content }}
+        </div>
     </div>
     <div class="message-input">
-        <input type="text" placeholder="Message..." />
+        <input [(ngModel)]="messageContent" type="text" placeholder="Type a message..." />
         <app-button text="Send" (buttonClick)="sendMessage()"></app-button>
     </div>
 </div>

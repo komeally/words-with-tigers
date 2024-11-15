@@ -17,11 +17,11 @@ export class ChatService {
       roomId,
       timestamp: new Date(),
     });
-    return message.save();
+    return await message.save();
   }
-  
+
   async getMessagesBetweenUsers(user1: string, user2: string | null, roomId: string): Promise<Message[]> {
-    return this.messageModel
+    return await this.messageModel
       .find({
         roomId,
         $or: [

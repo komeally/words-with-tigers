@@ -43,7 +43,7 @@ export class ChatGateway implements OnGatewayInit {
       client.emit('loadChatHistory', messages);
     }
   
-    console.log(`User ${userId} connected to room ${roomId}`);
+    console.log(`User ${client.data.user.username} connected to room ${roomId}`);
   }
 
   @SubscribeMessage('sendMessage')

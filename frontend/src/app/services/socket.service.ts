@@ -10,7 +10,7 @@ const BACKEND_URL = 'http://localhost:3000';
   providedIn: 'root',
 })
 export class SocketService {
-  private socket: Socket | null = null;
+  private connections: { [namespace: string]: Socket } = {}; // Store multiple sockets
   private readonly checkInterval = 10000; // Check every 10 seconds
   private stop$ = new Subject<void>();
 
@@ -37,7 +37,7 @@ export class SocketService {
 
   private handleTokenExpiration(): void {
     localStorage.removeItem('access_token');
-    this.disconnect(); // Disconnect any active socket
+    this.disconnectAll(); // Disconnect all active sockets
     this.router.navigate(['/login']); // Redirect to login page
   }
 
@@ -48,23 +48,46 @@ export class SocketService {
       return null;
     }
 
-    if (this.socket) this.disconnect();
+    // Avoid reconnecting if already connected to the namespace
+    if (this.connections[namespace]) {
+      return this.connections[namespace];
+    }
 
-    this.socket = io(`${BACKEND_URL}/${namespace}`, {
+    // Create a new connection for the namespace
+    const socket = io(`${BACKEND_URL}/${namespace}`, {
       auth: { token },
     });
 
-    return this.socket;
+    // Store the connection
+    this.connections[namespace] = socket;
+
+    socket.on('connect', () => {
+      console.log(`Connected to ${namespace} namespace`);
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`Disconnected from ${namespace} namespace`);
+      delete this.connections[namespace]; // Clean up on disconnect
+    });
+
+    return socket;
   }
 
-  disconnect(): void {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
+  disconnect(namespace: string): void {
+    const socket = this.connections[namespace];
+    if (socket) {
+      socket.disconnect();
+      delete this.connections[namespace];
     }
   }
 
-  getSocket(): Socket | null {
-    return this.socket;
+  disconnectAll(): void {
+    Object.keys(this.connections).forEach((namespace) => {
+      this.disconnect(namespace);
+    });
+  }
+
+  getSocket(namespace: string): Socket | null {
+    return this.connections[namespace] || null;
   }
 }

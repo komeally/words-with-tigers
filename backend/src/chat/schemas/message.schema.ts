@@ -8,7 +8,7 @@ export class Message {
   @Prop({ required: true })
   sender: string;
 
-  @Prop({ required: true })
+  @Prop({ required: false })
   recipient: string;  // This could be left empty for room-wide messages
 
   @Prop({ required: true })
