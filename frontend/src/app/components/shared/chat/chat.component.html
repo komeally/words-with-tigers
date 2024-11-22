@@ -4,7 +4,7 @@
     <div class="message-container">
         <div *ngFor="let message of messages" class="message">
             <small class="timestamp">{{ message.timestamp | date: 'short' }}</small>
-            <strong>{{ message.sender }}</strong>: {{ message.content }}
+            <strong>{{ message.sender.username }}</strong>: {{ message.content }}
         </div>
     </div>
     <div class="message-input">
