@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { User } from 'src/users/schemas/user.schema';
 
 export type MessageDocument = HydratedDocument<Message>;
@@ -8,10 +8,10 @@ export type MessageDocument = HydratedDocument<Message>;
 export class Message {
   _id: string; // Explicitly declare the _id field for TypeScript
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   sender: User; // Reference to the User schema
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
   recipient: User; // Reference to the User schema (optional for room-wide messages)
 
   @Prop({ required: true })
