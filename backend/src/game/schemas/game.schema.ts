@@ -1,10 +1,10 @@
 import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { User } from 'src/users/schemas/user.schema';
+import { Move } from 'src/moves/schemas/move.schema'; // Import Move schema
 
 export type GameDocument = HydratedDocument<Game>;
 
-// Enum for game statuses
 export enum GameStatus {
   WAITING = 'WAITING',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -15,13 +15,13 @@ export enum GameStatus {
 @Schema({ timestamps: true })
 export class Game {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  createdBy: Types.ObjectId | User; // Creator of the game
+  createdBy: Types.ObjectId | User;
 
   @Prop({ type: Date, default: null })
-  startTime: Date; // When the game started
+  startTime: Date;
 
   @Prop({ type: Date, default: null })
-  endTime: Date; // When the game ended
+  endTime: Date;
 
   @Prop({
     type: String,
@@ -29,10 +29,14 @@ export class Game {
     default: GameStatus.WAITING,
     index: true,
   })
-  status: GameStatus; // Current status of the game
+  status: GameStatus;
 
   @Prop({ type: Number, default: 0 })
-  finalScore: number; // Total score for the game
+  finalScore: number;
+
+  // Add the moves array here
+  @Prop({ type: [Types.ObjectId], ref: 'Move', default: [] })
+  moves: Types.ObjectId[] | Move[]; // Array of move references
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);

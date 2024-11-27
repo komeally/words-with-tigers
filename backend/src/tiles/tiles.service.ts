@@ -12,6 +12,14 @@ export class TilesService {
     return await tile.save();
   }
 
+  async getTileById(tileId: string) {
+    const user = await this.tileModel.findById(tileId).exec();
+    if (!user) {
+      throw new Error('Tile not found');
+    }
+    return user;
+  }
+
   async getAllTiles(): Promise<Tile[]> {
     return await this.tileModel.find().exec();
   }
