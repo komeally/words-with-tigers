@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { Tile } from 'src/tiles/schemas/tile.schema';
 import { Game } from 'src/game/schemas/game.schema';
+import { Tile } from './tile.schema';
 
 export type BoardDocument = HydratedDocument<Board>;
 

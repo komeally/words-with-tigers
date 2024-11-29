@@ -3,15 +3,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Move, MoveDocument } from './schemas/move.schema';
 import axios from 'axios';
-import { GameService } from '../game/game.service';
-import { TilesService } from '../tiles/tiles.service';
+import { BoardService } from 'src/board/board.service';
+import { GameService } from 'src/game/game.service';
+
 
 @Injectable()
 export class MovesService {
   constructor(
     @InjectModel(Move.name) private readonly moveModel: Model<MoveDocument>,
     private readonly gameService: GameService,
-    private readonly tilesService: TilesService,
+    private readonly boardService: BoardService,
   ) {}
 
   async createMove(moveDto: {
@@ -84,7 +85,6 @@ export class MovesService {
     return savedMove;
   }
   
-
   async getMovesByGame(gameId: string): Promise<Move[]> {
     return this.moveModel.find({ gameId }).sort({ moveNumber: 1 }).exec();
   }
@@ -103,7 +103,7 @@ export class MovesService {
   }
 
   private async calculateScore(tileIds: string[]): Promise<number> {
-    const tiles = await Promise.all(tileIds.map(id => this.tilesService.getTileById(id)));
+    const tiles = await Promise.all(tileIds.map(id => this.boardService.getTileById(id)));
     return tiles.reduce((sum, tile) => sum + tile.pointValue, 0);
   }
 }
