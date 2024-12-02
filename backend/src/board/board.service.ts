@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { Board, BoardDocument } from './schemas/board.schema';
 import { Tile, TileDocument } from './schemas/tile.schema';
 @Injectable()
@@ -14,30 +14,30 @@ export class BoardService {
     @InjectModel(Tile.name) private readonly tileModel: Model<TileDocument>,
   ) {}
 
-  // 1. Initialize a new board for a game
   async initializeBoard(
     gameId: string,
     boardSize: number = 15,
-  ): Promise<Board> {
-    const boardState = {};
-
+  ): Promise<BoardDocument> {
+    const boardState: Record<string, any> = {};
+  
+    // Initialize boardState with empty positions
     for (let row = 0; row < boardSize; row++) {
       for (let col = 0; col < boardSize; col++) {
-        boardState[`${row},${col}`] = null; // Initialize all positions as empty
+        boardState[`${row},${col}`] = null;
       }
     }
-
+  
+    // Create a new board document
     const newBoard = new this.boardModel({
       gameId,
       boardState,
       boardSize,
-      remainingTiles: [],
+      tileBag: [], // Initialize the tileBag as empty
     });
-
-    return newBoard.save();
-  }
-
-  async InitializeTiles(boardId: string): Promise<void> {
+  
+    const savedBoard = await newBoard.save();
+  
+    // Tile distribution setup
     const tileDistribution = [
       { letter: 'E', pointValue: 1, count: 13 },
       { letter: 'A', pointValue: 1, count: 9 },
@@ -66,12 +66,13 @@ export class BoardService {
       { letter: 'Q', pointValue: 10, count: 1 },
       { letter: 'Z', pointValue: 10, count: 1 },
     ];
-
+  
+    // Create tiles and update tileBag
     const tilesToInsert = [];
     for (const tile of tileDistribution) {
       for (let i = 0; i < tile.count; i++) {
         tilesToInsert.push({
-          boardId,
+          boardId: savedBoard._id,
           row: null, // Unassigned until placed on the board
           col: null,
           letter: tile.letter,
@@ -80,9 +81,17 @@ export class BoardService {
         });
       }
     }
-    await this.tileModel.insertMany(tilesToInsert);
-  }
   
+    // Insert tiles into the database
+    const insertedTiles = await this.tileModel.insertMany(tilesToInsert);
+  
+    // Update the tileBag of the board with the IDs of the inserted tiles
+    savedBoard.tileBag = insertedTiles.map(tile => tile._id);
+    await savedBoard.save();
+  
+    return savedBoard;
+  }
+    
   async getTileById(tileId: string): Promise<Tile> {
     const tile = await this.tileModel.findById(tileId).exec();
     if (!tile) {
@@ -91,28 +100,28 @@ export class BoardService {
     return tile;
   }
 
-  // 2. Place a tile on the board (during a move)
-  async placeTile(
+  async placeTiles(
     boardId: string,
-    row: number,
-    col: number,
-    tileId: string,
+    tiles: { row: number; col: number; tileId?: string }[]
   ): Promise<void> {
-    const boardTile = await this.tileModel.findOne({ boardId, row, col });
-
-    if (boardTile && boardTile.isLocked) {
-      throw new BadRequestException('Tile is locked and cannot be replaced.');
+    for (const { row, col, tileId } of tiles) {
+      if (!tileId) {
+        // Remove the tile if tileId is null or undefined
+        await this.tileModel.deleteOne({ boardId, row, col });
+      } else {
+        const boardTile = await this.tileModel.findOne({ boardId, row, col });
+        if (boardTile && boardTile.isLocked) {
+          throw new BadRequestException(`Tile at row ${row}, col ${col} is locked.`);
+        }
+        await this.tileModel.updateOne(
+          { boardId, row, col },
+          { tileId, isLocked: false },
+          { upsert: true }
+        );
+      }
     }
-
-    // Place or update the tile at the specified position
-    await this.tileModel.updateOne(
-      { boardId, row, col },
-      { tileId, isLocked: false },
-      { upsert: true }, // Create if not exists
-    );
   }
-
-  // 3. Lock tiles after a move is finalized
+  
   async lockTiles(
     boardId: string,
     tilePositions: { row: number; col: number }[],
@@ -126,15 +135,51 @@ export class BoardService {
     );
   }
 
-  // 4. Get the current state of the board
+  async drawTiles(
+    gameId: string,
+    count: number,
+  ): Promise<Tile[]> {
+    // Retrieve the current board by gameId
+    const board = await this.boardModel.findOne({ gameId });
+    if (!board) throw new NotFoundException('Board not found.');
+
+    // Ensure there are enough tiles left
+    if (board.tileBag.length < count) {
+      throw new BadRequestException('Not enough tiles remaining.');
+    }
+
+    // Shuffle and draw the requested number of tiles
+    const drawnTiles = [];
+    for (let i = 0; i < count; i++) {
+      const randomIndex = Math.floor(
+        Math.random() * board.tileBag.length,
+      );
+      const [tile] = board.tileBag.splice(randomIndex, 1);
+      drawnTiles.push(tile);
+    }
+
+    // Save the updated board state
+    await board.save();
+
+    // Return the drawn tiles
+    return drawnTiles;
+  }
+
+  async getBoardByGameId(gameId: string): Promise<Board> {
+    const board = await this.boardModel.findOne({ gameId }).exec();
+    if (!board) {
+      throw new NotFoundException(`Board for game ${gameId} not found.`);
+    }
+    return board;
+  }
+
   async getBoardState(gameId: string): Promise<Board | null> {
     return this.boardModel
       .findOne({ gameId })
-      .populate('remainingTiles')
+      .populate('tileBag')
       .exec();
   }
 
-  // 5. Reset the board for a game
   async resetBoard(gameId: string): Promise<void> {
     await this.boardModel.deleteOne({ gameId });
     await this.tileModel.deleteMany({ boardId: gameId });

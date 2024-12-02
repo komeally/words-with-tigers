@@ -31,7 +31,7 @@ export class Move {
       message: 'Tiles must be provided for PLACE moves and must be empty for PASS/RESIGN moves',
     },
   })
-  tiles: Types.ObjectId[] | Tile; // Tiles used for this move (if applicable)
+  tiles: Tile[]; // Tiles used for this move (if applicable)
 
   @Prop({ type: String, enum: ['PLACE', 'PASS', 'RESIGN'], required: true })
   moveType: 'PLACE' | 'PASS' | 'RESIGN'; // The type of move

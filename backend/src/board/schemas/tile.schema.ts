@@ -25,5 +25,5 @@ export class Tile {
   isLocked: boolean; // Indicates if the tile is finalized
 }
 
-export const BoardTileSchema = SchemaFactory.createForClass(Tile);
-BoardTileSchema.index({ boardId: 1, row: 1, col: 1 }, { unique: true });
+export const TileSchema = SchemaFactory.createForClass(Tile);
+TileSchema.index({ boardId: 1, row: 1, col: 1 }, { unique: true });

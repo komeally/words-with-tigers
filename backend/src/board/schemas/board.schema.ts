@@ -14,7 +14,7 @@ export class Board {
   boardState: Record<string, any>; // JSON-like structure representing the board's current state
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Tile' }], default: [] })
-  remainingTiles: Types.ObjectId[] | Tile[]; // Tiles left in the bag
+  tileBag: Tile[]; // Tiles left in the bag
 
   @Prop({ default: Date.now })
   lastUpdateTime: Date; // Timestamp for the last update to the board

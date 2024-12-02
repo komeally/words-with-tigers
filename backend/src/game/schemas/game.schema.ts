@@ -2,6 +2,8 @@ import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { User } from 'src/users/schemas/user.schema';
 import { Move } from 'src/moves/schemas/move.schema'; // Import Move schema
+import { Board } from 'src/board/schemas/board.schema';
+import { GamePlayer } from './game-player.schema';
 
 export type GameDocument = HydratedDocument<Game>;
 
@@ -17,6 +19,9 @@ export class Game {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   createdBy: Types.ObjectId | User;
 
+  @Prop({ type: Types.ObjectId, ref: 'Board', required: true }) // Link to the board
+  boardId: Types.ObjectId | Board;
+
   @Prop({ type: Date, default: null })
   startTime: Date;
 
@@ -31,12 +36,17 @@ export class Game {
   })
   status: GameStatus;
 
-  @Prop({ type: Number, default: 0 })
-  finalScore: number;
-
-  // Add the moves array here
   @Prop({ type: [Types.ObjectId], ref: 'Move', default: [] })
-  moves: Types.ObjectId[] | Move[]; // Array of move references
+  moves: Move[];
+  
+  @Prop({ type: [Types.ObjectId], ref: 'GamePlayer', default: [] })
+  players: GamePlayer[]; // Ordered list of players in the game
+  
+  @Prop({ type: Number, default: 0 })
+  currentTurnIndex: number; // Index of the current player's turn
+
+  @Prop({ type: Types.ObjectId, ref: 'GamePlayer', default: null })
+  winner: Types.ObjectId | GamePlayer;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);
