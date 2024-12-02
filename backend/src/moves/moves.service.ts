@@ -4,38 +4,41 @@ import { Model } from 'mongoose';
 import { Move, MoveDocument } from './schemas/move.schema';
 import axios from 'axios';
 import { BoardService } from 'src/board/board.service';
-import { GameService } from 'src/game/game.service';
+import { Tile } from 'src/board/schemas/tile.schema';
 
 @Injectable()
 export class MovesService {
   constructor(
     @InjectModel(Move.name) private readonly moveModel: Model<MoveDocument>,
-    private readonly gameService: GameService,
     private readonly boardService: BoardService,
   ) {}
 
-  async getMovesByGame(gameId: string): Promise<Move[]> {
-    return this.moveModel.find({ gameId }).sort({ moveNumber: 1 }).exec();
-  }
-
-  async getMovesByPlayer(playerId: string): Promise<Move[]> {
-    return this.moveModel.find({ playerId }).exec();
-  }
-
-  async getLastMoves(gameId: string, count: number): Promise<Move[]> {
-    return this.moveModel
-      .find({ gameId })
-      .sort({ moveNumber: -1 }) // Sort in descending order by move number
-      .limit(count)
-      .exec();
+  async getMoves(
+    gameId: string,
+    options?: { limit?: number; sortOrder?: 'asc' | 'desc' },
+  ): Promise<Move[]> {
+    const query = { gameId };
+    const sortDirection = options?.sortOrder === 'asc' ? 1 : -1;
+  
+    const moveQuery = this.moveModel
+      .find(query)
+      .sort({ moveNumber: sortDirection })
+      .populate('playerId', 'userId score') // Populate player details
+      .populate('tiles', 'letter pointValue'); // Populate tile details
+  
+    // Apply a limit if specified
+    if (options?.limit) {
+      moveQuery.limit(options.limit);
+    }
+  
+    return moveQuery.exec();
   }
   
-
   async placeMove(
     gameId: string,
     playerId: string,
     word: string,
-    tiles: string[],
+    tiles: Tile[],
     moveCount: number,
   ): Promise<Move> {
     // Validate the word using the dictionary API
@@ -43,7 +46,7 @@ export class MovesService {
     if (!isWordValid) throw new BadRequestException('Invalid word');
 
     // Calculate the score for the tiles used in this move
-    const score = await this.calculateScore(tiles);
+    const score = tiles.reduce((sum, tile) => sum + tile.pointValue, 0);
     if (score === null)
       throw new BadRequestException('Score calculation failed');
 
@@ -85,12 +88,5 @@ export class MovesService {
     } catch (error) {
       return false;
     }
-  }
-
-  async calculateScore(tileIds: string[]): Promise<number> {
-    const tiles = await Promise.all(
-      tileIds.map((id) => this.boardService.getTileById(id)),
-    );
-    return tiles.reduce((sum, tile) => sum + tile.pointValue, 0);
   }
 }

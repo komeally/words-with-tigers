@@ -9,10 +9,10 @@ export type GamePlayerDocument = HydratedDocument<GamePlayer>;
 @Schema({ timestamps: true })
 export class GamePlayer {
   @Prop({ type: Types.ObjectId, ref: 'Game', required: true, index: true })
-  gameId: Types.ObjectId | GameDocument; // Reference to the Game
+  gameId: Types.ObjectId | Game; // Reference to the Game
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
-  userId: Types.ObjectId | UserDocument; // Reference to the User
+  userId: Types.ObjectId | User; // Reference to the User
 
   @Prop({ type: Number, default: 0 })
   score: number; // Player's current score
