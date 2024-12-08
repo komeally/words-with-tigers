@@ -8,10 +8,8 @@ import { AuthModule } from 'src/auth/auth.module';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Message.name, schema: MessageSchema }]),
-    AuthModule
+    AuthModule,
   ],
-  providers: [ChatService, ChatGateway]
+  providers: [ChatService, ChatGateway],
 })
-export class ChatModule {
-  
-}
+export class ChatModule {}

@@ -14,8 +14,8 @@ export class Move {
   @Prop({ type: Types.ObjectId, ref: 'GamePlayer', required: true, index: true })
   playerId: Types.ObjectId | GamePlayer; // Reference to the player making the move
 
-  @Prop({ type: String, default: null })
-  word: string | null; // The word formed (null for PASS or RESIGN moves)
+  @Prop({ type: [String], default: [] })
+  words: string[] | []; // The word formed ([] for PASS or RESIGN moves)
 
   @Prop({ type: Number, default: null })
   score: number | null; // Points scored for the move (null for PASS or RESIGN)

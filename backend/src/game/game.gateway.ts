@@ -101,14 +101,11 @@ export class GameGateway implements OnGatewayInit {
     },
   ): Promise<void> {
     try {
-      const word = data.tiles.map((tile) => tile.letter).join('');
-
       const { move, tilesDrawn } = await this.gameService.processTurn({
         gameId: data.gameId,
         playerId: data.playerId,
         moveType: 'PLACE',
         tiles: data.tiles,
-        word,
       });
 
       this.server.to(data.gameId).emit('updateBoard', {

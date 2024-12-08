@@ -3,8 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { Game, GameDocument, GameStatus } from './schemas/game.schema';
 import { GamePlayer, GamePlayerDocument } from './schemas/game-player.schema';
 import { Move } from 'src/moves/schemas/move.schema';
@@ -25,6 +25,7 @@ export class GameService {
     @InjectModel(Game.name) private gameModel: Model<GameDocument>,
     @InjectModel(GamePlayer.name)
     private gamePlayerModel: Model<GamePlayerDocument>,
+    @InjectConnection() private readonly connection: Connection,
     private readonly movesService: MovesService,
     private readonly boardService: BoardService,
   ) {}
@@ -230,24 +231,48 @@ export class GameService {
     return drawnTiles;
   }
 
+  private generateWordTiles(
+    words: string[],
+    tiles: Tile[],
+  ): { [word: string]: Tile[] } {
+    const wordTiles: { [word: string]: Tile[] } = {};
+
+    for (const word of words) {
+      wordTiles[word] = tiles.filter((tile) => word.includes(tile.letter));
+    }
+
+    return wordTiles;
+  }
+
   private async createMove(moveDto: {
     gameId: string;
     playerId: string;
     moveType: 'PLACE' | 'PASS' | 'RESIGN';
     moveCount: number;
-    word?: string;
-    tiles?: string[];
+    words?: string[];
+    tiles?: Tile[];
+    wordTiles?: { [word: string]: Tile[] };
   }): Promise<Move> {
-    const { gameId, playerId, moveType, moveCount, word, tiles } = moveDto;
+    const { gameId, playerId, moveType, moveCount, words, tiles, wordTiles } =
+      moveDto;
     let move: Move;
 
     if (moveType === 'PLACE') {
-      const placedTiles = await this.boardService.getTilesFromIds(tiles);
+      if (!words || !tiles) {
+        throw new BadRequestException(
+          'Words, tiles, and wordTiles must be provided for PLACE moves.',
+        );
+      }
+
+      const wordTilesData = wordTiles || this.generateWordTiles(words, tiles);
+
+      // Use the movesService to process the move
       move = await this.movesService.placeMove(
         gameId,
         playerId,
-        word,
-        placedTiles,
+        words,
+        tiles,
+        wordTilesData,
         moveCount,
       );
     } else if (moveType === 'PASS' || moveType === 'RESIGN') {
@@ -270,9 +295,8 @@ export class GameService {
     playerId: string;
     moveType: 'PLACE' | 'PASS' | 'RESIGN';
     tiles?: { row: number; col: number; letter: string }[];
-    word?: string;
   }): Promise<{ move: Move; tilesDrawn: Tile[] }> {
-    const { gameId, playerId, moveType, tiles, word } = turnDto;
+    const { gameId, playerId, moveType, tiles } = turnDto;
 
     // Fetch the game with populated board and players
     const game = await this.gameModel
@@ -294,22 +318,37 @@ export class GameService {
     if (!gamePlayer.isActive)
       throw new BadRequestException("It's not your turn");
 
-    let tilesWithIds = [];
+    const board = game.boardId as BoardDocument;
+    let tilesWithIds: { row: number; col: number; tileId: string }[] = [];
     let tilesDrawn: Tile[] = [];
+    let words: string[] = [];
 
-    // Handle tile placement if it's a PLACE move
     if (moveType === 'PLACE') {
-      if (!tiles || tiles.length === 0 || !word) {
+      if (!tiles || tiles.length === 0) {
         throw new BadRequestException(
-          'Tiles and word must be provided for PLACE moves',
+          'Tiles must be provided for PLACE moves.',
         );
       }
 
-      // Use the populated board object directly
-      const board = game.boardId as BoardDocument;
+      // **Validate Starting Tile for First Move**
+      if (game.moves.length === 0) {
+        const startingTileRow = Math.floor(board.boardSize / 2);
+        const startingTileCol = Math.floor(board.boardSize / 2);
+
+        const isStartingTileUsed = tiles.some(
+          (tile) =>
+            tile.row === startingTileRow && tile.col === startingTileCol,
+        );
+
+        if (!isStartingTileUsed) {
+          throw new BadRequestException(
+            'The first word must include a tile on the starting tile.',
+          );
+        }
+      }
 
       // Map tiles with `letter` to include `tileId`
-      const tilesWithIds = await Promise.all(
+      tilesWithIds = await Promise.all(
         tiles.map(async (tile) => {
           const tileId = await this.boardService.getTileId(
             board._id.toString(),
@@ -323,7 +362,18 @@ export class GameService {
 
       // Place tiles on the board
       await this.boardService.placeTiles(board._id.toString(), tilesWithIds);
+
+      // Generate words from the placed tiles
+      words = await this.boardService.generateWords(
+        board._id.toString(),
+        tilesWithIds,
+      );
     }
+
+    // Fetch full Tile documents for the IDs
+    const placedTiles = await this.boardService.getTilesFromIds(
+      tilesWithIds.map((tile) => tile.tileId),
+    );
 
     // Create and finalize the move
     const moveCount = game.moves.length;
@@ -331,21 +381,21 @@ export class GameService {
       gameId,
       playerId,
       moveType,
-      word,
       moveCount,
-      tiles: tilesWithIds?.map((tile) => tile.tileId),
+      words, // Pass generated words
+      tiles: placedTiles,
     });
 
     if (moveType === 'RESIGN') {
       await this.finalizeGame(gameId); // Ends the game immediately
+      return { move, tilesDrawn }; // Return immediately after resign
     }
 
     // Lock the tiles on the board
-    const board = game.boardId as BoardDocument;
     await this.boardService.lockTiles(board._id.toString(), tiles);
 
     // Check if game has ended after locking tiles
-    if (await this.isGameEnded(gameId)) return;
+    if (await this.isGameEnded(gameId)) return { move, tilesDrawn };
 
     // Draw new tiles for the player
     const rackSize = 7;
@@ -358,7 +408,7 @@ export class GameService {
     await this.checkEndConditions(gameId);
 
     // Check if game has ended after checking conditions
-    if (await this.isGameEnded(gameId)) return;
+    if (await this.isGameEnded(gameId)) return { move, tilesDrawn };
 
     // Switch turns and return the move
     await this.switchTurns(gameId);
@@ -473,5 +523,40 @@ export class GameService {
     await game.save();
 
     return endReason;
+  }
+
+  async deleteGame(gameId: string): Promise<{ message: string }> {
+    const session = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      // Validate if the game exists
+      const game = await this.gameModel.findById(gameId).session(session);
+      if (!game) {
+        throw new Error(`Game with ID ${gameId} not found.`);
+      }
+
+      // Delete moves associated with the game
+      await this.movesService.deleteMovesByGame(gameId);
+
+      // Delete players associated with the game
+      await this.gamePlayerModel.deleteMany({ gameId }).session(session);
+
+      // Delete the board associated with the game
+      await this.boardService.deleteBoard(gameId);
+
+      // Delete the game itself
+      await this.gameModel.deleteOne({ _id: gameId }).session(session);
+
+      await session.commitTransaction();
+      return {
+        message: `Game with ID ${gameId} and its related data have been deleted.`,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw new Error(`Failed to delete game: ${error.message}`);
+    } finally {
+      session.endSession();
+    }
   }
 }

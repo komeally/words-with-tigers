@@ -9,7 +9,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LobbyModule } from './lobby/lobby.module';
 import { ChatModule } from './chat/chat.module';
-import { TilesModule } from './tiles/tiles.module';
 import { BoardModule } from './board/board.module';
 import { GameModule } from './game/game.module';
 import { MovesModule } from './moves/moves.module';
@@ -28,7 +27,6 @@ import { MovesModule } from './moves/moves.module';
     AuthModule,
     LobbyModule,
     ChatModule,
-    TilesModule,
     BoardModule,
     GameModule,
     MovesModule,

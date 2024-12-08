@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MovesService } from './moves.service';
-import { MovesController } from './moves.controller';
+import { Move, MoveSchema } from './schemas/move.schema';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
+  imports: [
+    MongooseModule.forFeature([{ name: Move.name, schema: MoveSchema }]),
+  ],
   providers: [MovesService],
-  controllers: [MovesController]
+  exports: [MovesService],
 })
 export class MovesModule {}

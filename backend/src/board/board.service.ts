@@ -3,8 +3,8 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
 import { Board, BoardDocument } from './schemas/board.schema';
 import { Tile, TileDocument } from './schemas/tile.schema';
 @Injectable()
@@ -12,6 +12,7 @@ export class BoardService {
   constructor(
     @InjectModel(Board.name) private readonly boardModel: Model<BoardDocument>,
     @InjectModel(Tile.name) private readonly tileModel: Model<TileDocument>,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
 
   async getTileId(
@@ -41,7 +42,30 @@ export class BoardService {
     return this.tileModel.find({ _id: { $in: tileIds } }).exec();
   }
 
-  private async populateTileBag(boardId: string): Promise<Tile[]> {
+  async initializeBoard(
+    gameId: string,
+    boardSize: number = 15,
+  ): Promise<BoardDocument> {
+    const boardState: Record<string, any> = {};
+
+    // Initialize boardState with empty positions
+    for (let row = 0; row < boardSize; row++) {
+      for (let col = 0; col < boardSize; col++) {
+        boardState[`${row},${col}`] = null;
+      }
+    }
+
+    // Create a new board document
+    const newBoard = new this.boardModel({
+      gameId,
+      boardState,
+      boardSize,
+      tileBag: [], // Initialize the tileBag as empty
+    });
+
+    const savedBoard = await newBoard.save();
+
+    // Tile distribution setup
     const tileDistribution = [
       { letter: 'E', pointValue: 1, count: 13 },
       { letter: 'A', pointValue: 1, count: 9 },
@@ -70,77 +94,29 @@ export class BoardService {
       { letter: 'Q', pointValue: 10, count: 1 },
       { letter: 'Z', pointValue: 10, count: 1 },
     ];
-  
-    // Create tile objects
-    const tilesToInsert = tileDistribution.flatMap((tile) =>
-      Array.from({ length: tile.count }).map(() => ({
-        boardId: new Types.ObjectId(boardId),
-        row: null,
-        col: null,
-        letter: tile.letter,
-        pointValue: tile.pointValue,
-        specialType: null,
-        isLocked: false,
-      }))
-    );
-  
-    // Insert tiles and return the plain array
-    return await this.tileModel.insertMany(tilesToInsert);
-  }
-  
 
-  private generateBoardState(boardId: Types.ObjectId, boardSize: number): Record<string, any> {
-    const boardState: Record<string, any> = {};
-  
-    const bonusMap: { [key: string]: (row: number, col: number) => boolean } = {
-      DL: (row, col) => row === col && row % 3 === 0, // Double Letter condition
-      TL: (row, col) => row + col === boardSize - 1 && row % 4 === 0, // Triple Letter condition
-      DW: (row, col) => row === Math.floor(boardSize / 2) || col === Math.floor(boardSize / 2), // Double Word condition
-      TW: (row, col) => row % 7 === 0 && col % 7 === 0, // Triple Word condition
-      START: (row, col) => row === Math.floor(boardSize / 2) && col === Math.floor(boardSize / 2), // Starting tile condition
-    };
-  
-    for (let row = 0; row < boardSize; row++) {
-      for (let col = 0; col < boardSize; col++) {
-        let specialType: 'DL' | 'TL' | 'DW' | 'TW' | 'START' | null = null;
-  
-        for (const [type, condition] of Object.entries(bonusMap)) {
-          if (condition(row, col)) {
-            specialType = type as typeof specialType;
-            break;
-          }
-        }
-  
-        boardState[`${row},${col}`] = {
-          boardId, // Ensure the ObjectId type is passed
-          row,
-          col,
-          specialType,
-          letter: null,
-          pointValue: null,
+    // Create tiles and update tileBag
+    const tilesToInsert = [];
+    for (const tile of tileDistribution) {
+      for (let i = 0; i < tile.count; i++) {
+        tilesToInsert.push({
+          boardId: savedBoard._id,
+          row: null, // Unassigned until placed on the board
+          col: null,
+          letter: tile.letter,
+          pointValue: tile.pointValue,
           isLocked: false,
-        };
+        });
       }
     }
-  
-    return boardState;
-  }
-  
-  async initializeBoard(gameId: string, boardSize: number = 15): Promise<BoardDocument> {
-    const newBoard = new this.boardModel({
-      gameId,
-      boardSize,
-    });
-    const savedBoard = await newBoard.save();
-  
-    const boardState = this.generateBoardState(savedBoard._id, boardSize);
-    const tileBag = await this.populateTileBag(savedBoard._id.toString());
-  
-    // Update the board with the initialized state and tile bag
-    savedBoard.boardState = boardState;
-    savedBoard.tileBag = tileBag;
+
+    // Insert tiles into the database
+    const insertedTiles = await this.tileModel.insertMany(tilesToInsert);
+
+    // Update the tileBag of the board with the IDs of the inserted tiles
+    savedBoard.tileBag = insertedTiles.map((tile) => tile._id);
     await savedBoard.save();
-  
+
     return savedBoard;
   }
 
@@ -182,18 +158,24 @@ export class BoardService {
     row: number,
     col: number,
     direction: 'horizontal' | 'vertical',
-  ): Promise<{ word: string; tiles: { row: number; col: number; tileId: string }[] }> {
-    const board = await this.boardModel.findById(boardId).populate('tileBag').exec();
+  ): Promise<{
+    word: string;
+    tiles: { row: number; col: number; tileId: string }[];
+  }> {
+    const board = await this.boardModel
+      .findById(boardId)
+      .populate('tileBag')
+      .exec();
     if (!board) throw new Error('Board not found');
-  
+
     const tiles = board.boardState; // Assuming `boardState` contains the tile positions.
     let word = '';
     const wordTiles = [];
-  
+
     // Step in the specified direction (left/up or right/down)
     const deltaRow = direction === 'vertical' ? 1 : 0;
     const deltaCol = direction === 'horizontal' ? 1 : 0;
-  
+
     // Scan backward to the start of the word
     let currentRow = row;
     let currentCol = col;
@@ -204,11 +186,11 @@ export class BoardService {
       currentRow -= deltaRow;
       currentCol -= deltaCol;
     }
-  
+
     // Adjust to the first valid tile
     currentRow += deltaRow;
     currentCol += deltaCol;
-  
+
     // Scan forward to collect the word and tiles
     while (
       tiles[`${currentRow},${currentCol}`] &&
@@ -217,29 +199,40 @@ export class BoardService {
       const tile = tiles[`${currentRow},${currentCol}`];
       word += tile.letter;
       wordTiles.push({ row: currentRow, col: currentCol, tileId: tile.tileId });
-  
+
       currentRow += deltaRow;
       currentCol += deltaCol;
     }
-  
+
     return { word, tiles: wordTiles };
   }
-  
 
-  async generateWords(boardId: string, placedTiles: { row: number; col: number }[]): Promise<string[]> {
+  async generateWords(
+    boardId: string,
+    placedTiles: { row: number; col: number }[],
+  ): Promise<string[]> {
     const words = [];
-  
+
     for (const tile of placedTiles) {
-      const horizontalWord = await this.getWordFromDirection(boardId, tile.row, tile.col, 'horizontal');
+      const horizontalWord = await this.getWordFromDirection(
+        boardId,
+        tile.row,
+        tile.col,
+        'horizontal',
+      );
       if (horizontalWord.word.length > 1) words.push(horizontalWord);
-  
-      const verticalWord = await this.getWordFromDirection(boardId, tile.row, tile.col, 'vertical');
+
+      const verticalWord = await this.getWordFromDirection(
+        boardId,
+        tile.row,
+        tile.col,
+        'vertical',
+      );
       if (verticalWord.word.length > 1) words.push(verticalWord);
     }
-  
+
     return words;
   }
-  
 
   async placeTiles(
     boardId: string,
@@ -318,8 +311,29 @@ export class BoardService {
     return this.boardModel.findOne({ gameId }).populate('tileBag').exec();
   }
 
-  async resetBoard(gameId: string): Promise<void> {
-    await this.boardModel.deleteOne({ gameId });
-    await this.tileModel.deleteMany({ boardId: gameId });
+  async deleteBoard(gameId: string): Promise<void> {
+    const session = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      const board = await this.boardModel.findOne({ gameId }).session(session);
+
+      if (!board) {
+        throw new Error(`Board associated with game ID ${gameId} not found.`);
+      }
+
+      // Delete all tiles associated with the board
+      await this.tileModel.deleteMany({ _id: board._id }).session(session);
+
+      // Delete the board itself
+      await this.boardModel.deleteOne({ _id: board._id }).session(session);
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw new BadRequestException('Failed to delete board: ' + error.message);
+    } finally {
+      session.endSession();
+    }
   }
 }

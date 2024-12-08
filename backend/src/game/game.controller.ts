@@ -6,6 +6,7 @@ import {
   Body,
   Param,
   BadRequestException,
+  Delete,
 } from '@nestjs/common';
 import { GameService } from './game.service';
 
@@ -74,5 +75,10 @@ export class GameController {
   @Get(':gameId/moves')
   async getMoves(@Param('gameId') gameId: string) {
     return this.gameService.getGameMoves(gameId);
+  }
+
+  @Delete(':gameId')
+  async deleteGame(@Param('gameId') gameId: string) {
+    return this.gameService.deleteGame(gameId);
   }
 }

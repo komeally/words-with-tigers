@@ -3,14 +3,12 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Move, MoveDocument } from './schemas/move.schema';
 import axios from 'axios';
-import { BoardService } from 'src/board/board.service';
 import { Tile } from 'src/board/schemas/tile.schema';
 
 @Injectable()
 export class MovesService {
   constructor(
-    @InjectModel(Move.name) private readonly moveModel: Model<MoveDocument>,
-    private readonly boardService: BoardService,
+    @InjectModel(Move.name) private readonly moveModel: Model<MoveDocument>
   ) {}
 
   async getMoves(
@@ -33,35 +31,61 @@ export class MovesService {
   
     return moveQuery.exec();
   }
+
+  private async validateAndScoreWords(
+    words: string[],
+    wordTiles: { [word: string]: Tile[] },
+  ): Promise<{ validWords: string[]; totalScore: number }> {
+    const validWords: string[] = [];
+    let totalScore = 0;
+  
+    for (const word of words) {
+      const isValid = await this.validateWord(word);
+      if (isValid) {
+        validWords.push(word);
+  
+        // Calculate score for the word based on its tiles
+        const score = wordTiles[word].reduce((sum, tile) => sum + tile.pointValue, 0);
+        totalScore += score;
+      }
+    }
+  
+    return { validWords, totalScore };
+  }
   
   async placeMove(
     gameId: string,
     playerId: string,
-    word: string,
+    words: string[],
     tiles: Tile[],
+    wordTiles: { [word: string]: Tile[] },
     moveCount: number,
   ): Promise<Move> {
-    // Validate the word using the dictionary API
-    const isWordValid = await this.validateWord(word);
-    if (!isWordValid) throw new BadRequestException('Invalid word');
-
-    // Calculate the score for the tiles used in this move
-    const score = tiles.reduce((sum, tile) => sum + tile.pointValue, 0);
-    if (score === null)
-      throw new BadRequestException('Score calculation failed');
-
+    // Validate and score the words
+    const { validWords, totalScore } = await this.validateAndScoreWords(words, wordTiles);
+  
+    // If any words are invalid, throw an error with details
+    if (validWords.length !== words.length) {
+      const invalidWords = words.filter((word) => !validWords.includes(word));
+      throw new BadRequestException(
+        `The following words are invalid: ${invalidWords.join(', ')}`,
+      );
+    }
+  
+    // Create a move document with valid words and total score
     const move = new this.moveModel({
       gameId,
       playerId,
       moveType: 'PLACE',
-      word,
-      score,
-      tiles,
-      moveNumber: moveCount + 1,
+      words: validWords, // Store all valid words
+      score: totalScore, // Total score of the move
+      tiles: tiles, // Store tiles used in the move
+      moveNumber: moveCount + 1, // Increment move count
     });
-
+  
     return move.save();
   }
+  
 
   async passOrResignMove(
     gameId: string,
@@ -87,6 +111,14 @@ export class MovesService {
       return response.status === 200 && response.data.length > 0;
     } catch (error) {
       return false;
+    }
+  }
+
+  async deleteMovesByGame(gameId: string): Promise<void> {
+    try {
+      await this.moveModel.deleteMany({ gameId });
+    } catch (error) {
+      throw new BadRequestException('Failed to delete moves: ' + error.message);
     }
   }
 }
