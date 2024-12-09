@@ -13,7 +13,9 @@ import { GameService } from './game.service';
 @WebSocketGateway({
   namespace: '/game',
   cors: {
-    origin: 'http://localhost:4200',
+    origin: ['http://localhost:4200', 'http://localhost:4201'], // Add both ports
+    methods: ['GET', 'POST'], // Allowed HTTP methods
+    credentials: true, // Allow cookies if necessary
   },
 })
 export class GameGateway implements OnGatewayInit {

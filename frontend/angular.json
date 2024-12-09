@@ -73,6 +73,10 @@
             },
             "development": {
               "buildTarget": "frontend:build:development"
+            },
+            "player2": {
+              "buildTarget": "frontend:build:development",
+              "port": 4201
             }
           },
           "defaultConfiguration": "development"

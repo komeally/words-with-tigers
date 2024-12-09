@@ -14,7 +14,8 @@ import { AuthService } from 'src/auth/auth.service';
 @WebSocketGateway({
   namespace: '/chat',
   cors: {
-    origin: 'http://localhost:4200',
+    origin: ['http://localhost:4200', 'http://localhost:4201'],
+    credentials: true,
   },
 })
 export class ChatGateway implements OnGatewayInit {

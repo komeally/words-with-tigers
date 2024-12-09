@@ -6,7 +6,8 @@ import { AuthService } from 'src/auth/auth.service';
 @WebSocketGateway({
   namespace: '/lobby',
   cors: {
-    origin: 'http://localhost:4200',
+    origin: ['http://localhost:4200', 'http://localhost:4201'],
+    credentials: true,
   },
 })
 export class LobbyGateway implements OnGatewayInit {
