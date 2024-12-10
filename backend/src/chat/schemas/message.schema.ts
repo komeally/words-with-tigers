@@ -6,13 +6,13 @@ export type MessageDocument = HydratedDocument<Message>;
 
 @Schema({ timestamps: true }) // Enables createdAt and updatedAt timestamps automatically
 export class Message {
-  _id: string; // Explicitly declare the _id field for TypeScript
+  _id: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   sender: User; // Reference to the User schema
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
-  recipient: User; // Reference to the User schema (optional for room-wide messages)
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+  recipients: User[]; // Array of recipients for group messages
 
   @Prop({ required: true })
   content: string;
@@ -26,5 +26,5 @@ export class Message {
 
 export const MessageSchema = SchemaFactory.createForClass(Message);
 
-// Index the roomId, sender, recipient, and timestamp fields for optimized querying
-MessageSchema.index({ roomId: 1, sender: 1, recipient: 1, timestamp: 1 });
+// Index the roomId, sender, recipients, and timestamp fields for optimized querying
+MessageSchema.index({ roomId: 1, sender: 1, recipients: 1, timestamp: 1 });

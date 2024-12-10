@@ -6,9 +6,9 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Game, GameSchema } from './schemas/game.schema';
 import { GamePlayer, GamePlayerSchema } from './schemas/game-player.schema';
 import { MovesModule } from 'src/moves/moves.module';
-import { Board } from 'src/board/schemas/board.schema';
 import { BoardModule } from 'src/board/board.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { ChatModule } from 'src/chat/chat.module';
 
 @Module({
   imports: [
@@ -18,6 +18,7 @@ import { AuthModule } from 'src/auth/auth.module';
     ]),
     MovesModule,
     BoardModule,
+    ChatModule,
     AuthModule,
   ],
   providers: [GameService, GameGateway],

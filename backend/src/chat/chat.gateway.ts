@@ -1,4 +1,3 @@
-// src/chat/chat.gateway.ts
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -10,6 +9,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { AuthService } from 'src/auth/auth.service';
+import { UserDocument } from 'src/users/schemas/user.schema';
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -25,7 +25,7 @@ export class ChatGateway implements OnGatewayInit {
   constructor(
     private chatService: ChatService,
     private authService: AuthService,
-  ) { }
+  ) {}
 
   afterInit(server: Server) {
     server.use(async (socket: Socket, next) => {
@@ -41,47 +41,51 @@ export class ChatGateway implements OnGatewayInit {
   }
 
   async handleConnection(@ConnectedSocket() client: Socket) {
-    const userId = client.data.user.id;
+    const user = client.data.user as UserDocument;
     const roomId = client.data.roomId || 'lobby';
   
     // Add the user to the room
     client.join(roomId);
   
-    // Retrieve past messages if more than two users are connected in the room
-    const activeUserCount = await this.getActiveUserCountInLobby(roomId);
-    if (activeUserCount > 2) {
-      const messages = await this.chatService.getMessagesBetweenUsers(userId, null, roomId);
+    // Emit current user data back to the client
+    client.emit('currentUser', {
+      userId: user._id.toString(),
+      username: user.username,
+    });
   
-      // Populate sender and recipient fields
-      const populatedMessages = await this.chatService.populateMessages(messages);
+    // Retrieve past messages in the room
+    const messages = await this.chatService.getMessages(roomId);
   
-      client.emit('loadChatHistory', populatedMessages);
-    }
+    // Send chat history to the connected client
+    client.emit('loadChatHistory', messages);
   
-    console.log(`User ${client.data.user.username} connected to room ${roomId}`);
+    console.log(
+      `User ${user.username} connected to room ${roomId}`,
+    );
   }
-  
+
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { content: string }
+    @MessageBody() data: { content: string; recipients?: string[] },
   ) {
     const senderId = client.data.user.id;
-    const roomId = client.data.roomId || 'lobby'; // Default to 'lobby' if no specific room is provided
+    const roomId = client.data.roomId || 'lobby';
 
-    // Save the message in the database with references
-    const savedMessage = await this.chatService.saveMessage(senderId, null, data.content, roomId);
+    // Save the message with references
+    const savedMessage = await this.chatService.saveMessage(
+      senderId,
+      data.recipients || [],
+      data.content,
+      roomId,
+    );
 
-    // Populate the saved message with user data
-    const populatedMessage = await this.chatService.populateMessage(savedMessage._id);
+    // Populate the saved message
+    const populatedMessage = await this.chatService.populateMessage(
+      savedMessage._id.toString(),
+    );
 
     // Broadcast the message to the room
     this.server.to(roomId).emit('receiveMessage', populatedMessage);
-  }
-
-  // Helper function to count active users in the lobby (room)
-  async getActiveUserCountInLobby(roomId: string): Promise<number> {
-    const sockets = await this.server.in(roomId).fetchSockets();
-    return sockets.length;
   }
 }

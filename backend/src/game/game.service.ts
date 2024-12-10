@@ -12,6 +12,7 @@ import { BoardService } from 'src/board/board.service';
 import { MovesService } from 'src/moves/moves.service';
 import { Tile } from 'src/board/schemas/tile.schema';
 import { BoardDocument } from 'src/board/schemas/board.schema';
+import { ChatService } from 'src/chat/chat.service';
 
 export enum GameEndReason {
   NATURAL_WINNER = 'NATURAL_WINNER',
@@ -23,11 +24,11 @@ export enum GameEndReason {
 export class GameService {
   constructor(
     @InjectModel(Game.name) private gameModel: Model<GameDocument>,
-    @InjectModel(GamePlayer.name)
-    private gamePlayerModel: Model<GamePlayerDocument>,
+    @InjectModel(GamePlayer.name) private gamePlayerModel: Model<GamePlayerDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly movesService: MovesService,
     private readonly boardService: BoardService,
+    private readonly chatService: ChatService
   ) {}
 
   // Retrieve a game by its ID
@@ -544,6 +545,9 @@ export class GameService {
 
       // Delete the board associated with the game
       await this.boardService.deleteBoard(gameId);
+
+      // Delete chat room and associated messages
+      await this.chatService.deleteChatRoom(gameId);
 
       // Delete the game itself
       await this.gameModel.deleteOne({ _id: gameId }).session(session);

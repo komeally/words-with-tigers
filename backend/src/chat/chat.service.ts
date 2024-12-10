@@ -11,13 +11,13 @@ export class ChatService {
   // Save a new message in the database
   async saveMessage(
     sender: string, 
-    recipient: string | null, 
+    recipients: string[], 
     content: string, 
     roomId: string
   ): Promise<Message> {
     const message = new this.messageModel({
       sender,
-      recipient,
+      recipients,
       content,
       roomId,
       timestamp: new Date(),
@@ -26,44 +26,43 @@ export class ChatService {
     return await message.save();
   }
 
-  async getMessagesBetweenUsers(
-    user1: string, 
-    user2: string | null, 
-    roomId: string
-  ): Promise<Message[]> {
-    const query = {
-      roomId,
-      $or: [
-        { sender: user1, recipient: user2 },
-        { sender: user2, recipient: user1 }
-      ]
-    };
-  
-    return await this.messageModel
-      .find(query)
+  async getMessages(roomId: string): Promise<Message[]> {
+    return this.messageModel
+      .find({ roomId })
       .sort({ timestamp: 1 })
       .populate('sender', 'username') // Populate sender username
-      .populate('recipient', 'username') // Populate recipient username
+      .populate('recipients', 'username') // Populate recipients usernames
       .exec();
   }
 
   async populateMessage(messageId: string): Promise<Message> {
     return await this.messageModel
       .findById(messageId)
-      .populate('sender', 'username')
-      .populate('recipient', 'username')
+      .populate('sender', 'username') // Populate sender's username
+      .populate({
+        path: 'recipients',
+        select: 'username', // Populate recipient usernames
+      })
       .exec();
   }
-
+  
   async populateMessages(messages: Message[]): Promise<Message[]> {
     return Promise.all(
       messages.map((message) =>
         this.messageModel
-          .findById(message._id)
-          .populate('sender', 'username')
-          .populate('recipient', 'username')
+          .findById(message._id) // Use the explicitly declared _id property
+          .populate('sender', 'username') // Populate sender's username
+          .populate({
+            path: 'recipients',
+            select: 'username', // Populate recipient usernames
+          })
           .exec()
       )
     );
+  }
+
+  async deleteChatRoom(roomId: string): Promise<void> {
+    await this.messageModel.deleteMany({ roomId });
+    console.log(`Chat room ${roomId} and its messages have been deleted.`);
   }
 }

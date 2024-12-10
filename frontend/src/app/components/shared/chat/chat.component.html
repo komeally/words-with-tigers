@@ -1,14 +1,22 @@
-<!-- Displaying chat messages -->
 <div class="chat-container">
     <div class="chat-header">Chat with Tigers</div>
     <div class="message-container">
-        <div *ngFor="let message of messages" class="message">
-            <small class="timestamp">{{ message.timestamp | date: 'short' }}</small>
-            <strong>{{ message.sender.username }}</strong>: {{ message.content }}
+        <div *ngFor="let message of messages" [ngClass]="{'message-right': isCurrentUser(message.sender._id), 
+                      'message-left': !isCurrentUser(message.sender._id)}">
+            <div class="message-bubble">
+                {{ message.content }}
+            </div>
+            <div class="message-info">
+                <ng-container *ngIf="!isCurrentUser(message.sender._id)">
+                    <span class="username">{{ message.sender.username }}</span>
+                    <span class="dot-separator">•</span>
+                </ng-container>
+                <span class="timestamp">{{ message.timestamp | date:'shortTime' }}</span>
+            </div>
         </div>
     </div>
     <div class="message-input">
-        <input [(ngModel)]="messageContent" type="text" placeholder="Type a message..." />
+        <input [(ngModel)]="messageContent" type="text" placeholder="Type a message..." (keyup.enter)="sendMessage()" />
         <app-button text="Send" (buttonClick)="sendMessage()"></app-button>
     </div>
 </div>

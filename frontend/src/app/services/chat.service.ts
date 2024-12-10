@@ -1,61 +1,72 @@
-// src/app/services/chat.service.ts
 import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { SocketService } from './socket.service';
-import { Observable } from 'rxjs';
+
+export type ChatMessage = {
+  sender: { _id: string; username: string };
+  content: string;
+  timestamp: Date;
+};
 
 @Injectable({
-    providedIn: 'root',
+  providedIn: 'root',
 })
 export class ChatService {
-    constructor(private socketService: SocketService) { }
+  private currentUserSubject = new BehaviorSubject<{ userId: string; username: string } | null>(null);
+  private messagesSubject = new BehaviorSubject<ChatMessage[]>([]);
 
-    // Connect to the chat namespace
-    connect(): void {
-        this.socketService.connect('chat');
-    }
+  constructor(private socketService: SocketService) {}
 
-    // Disconnect from the chat namespace
-    disconnect(): void {
-        this.socketService.disconnect('chat');
-    }
+  // Expose observables for current user and chat messages
+  get currentUser$(): Observable<{ userId: string; username: string } | null> {
+    return this.currentUserSubject.asObservable();
+  }
 
-    // Join a specific chat room
-    joinRoom(roomId: string): void {
-        const socket = this.socketService.getSocket('chat');
-        if (socket) {
-            socket.emit('joinRoom', roomId);
-        }
-    }
+  get messages$(): Observable<ChatMessage[]> {
+    return this.messagesSubject.asObservable();
+  }
 
-    // Send a chat message
-    sendMessage(content: string): void {
-        const socket = this.socketService.getSocket('chat');
-        if (socket) {
-            socket.emit('sendMessage', { content });
-        }
-    }
+  // Connect to the chat namespace
+  connect(): void {
+    const socket = this.socketService.connect('chat');
+    if (socket) {
+      // Listen for the current user's information
+      socket.on('currentUser', (user: { userId: string; username: string }) => {
+        this.currentUserSubject.next(user);
+      });
 
-    // Listen for new messages
-    onMessageReceived(): Observable<any> {
-        const socket = this.socketService.getSocket('chat');
-        return new Observable((observer) => {
-            if (socket) {
-                socket.on('receiveMessage', (message) => {
-                    observer.next(message);
-                });
-            }
-        });
-    }
+      // Listen for new messages
+      socket.on('receiveMessage', (message: ChatMessage) => {
+        this.messagesSubject.next([...this.messagesSubject.value, message]);
+      });
 
-    // Load chat history
-    loadChatHistory(): Observable<any> {
-        const socket = this.socketService.getSocket('chat');
-        return new Observable((observer) => {
-            if (socket) {
-                socket.on('loadChatHistory', (messages) => {
-                    observer.next(messages);
-                });
-            }
-        });
+      // Listen for chat history
+      socket.on('loadChatHistory', (messages: ChatMessage[]) => {
+        this.messagesSubject.next(messages);
+      });
     }
+  }
+
+  // Disconnect from the chat namespace
+  disconnect(): void {
+    this.socketService.disconnect('chat');
+    this.currentUserSubject.next(null); // Reset current user state
+    this.messagesSubject.next([]); // Clear messages state
+  }
+
+  // Send a message
+  sendMessage(content: string): void {
+    const socket = this.socketService.getSocket('chat');
+    if (socket) {
+      socket.emit('sendMessage', { content });
+    }
+  }
+
+  // Join a specific chat room
+  joinRoom(roomId: string): void {
+    const socket = this.socketService.getSocket('chat');
+    if (socket) {
+      socket.emit('joinRoom', roomId);
+    }
+  }
 }
