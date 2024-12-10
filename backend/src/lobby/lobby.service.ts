@@ -1,18 +1,28 @@
 import { Injectable } from '@nestjs/common';
 
+export type Player = {
+  userId: string;  // The user's unique ID
+  username: string; // The username
+  socketId: string; // The socket ID associated with the connection
+};
+
 @Injectable()
 export class LobbyService {
-  private players: Set<string> = new Set(); // Store connected player IDs
+  private players: Map<string, Player> = new Map(); // Use Map for O(1) lookups
 
-  addPlayer(playerId: string) {
-    this.players.add(playerId);
+  addPlayer(player: Player): void {
+    this.players.set(player.socketId, player);
   }
 
-  removePlayer(playerId: string) {
-    this.players.delete(playerId);
+  removePlayer(socketId: string): void {
+    this.players.delete(socketId);
   }
 
-  getPlayers(): string[] {
-    return Array.from(this.players);
+  getPlayers(): Player[] {
+    return Array.from(this.players.values());
+  }
+
+  getPlayerBySocketId(socketId: string): Player | undefined {
+    return this.players.get(socketId);
   }
 }

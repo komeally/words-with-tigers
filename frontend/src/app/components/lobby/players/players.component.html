@@ -2,9 +2,9 @@
 <div class="lobby-container">
     <div class="lobby-header">Play with Tigers</div>
     <div class="lobby-players">
-        <h3>Players in Lobby:</h3>
-        <ul>
-            <li *ngFor="let player of players">{{ player }}</li>
-        </ul>
+        <div *ngFor="let player of (filteredPlayers$ | async)" class="player-item">
+            <span class="player-name">{{ player.username }}</span>
+            <app-button text="Play" (buttonClick)="playGame()"></app-button>
+        </div>
     </div>
 </div>

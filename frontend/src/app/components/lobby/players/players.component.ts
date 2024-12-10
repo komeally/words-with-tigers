@@ -1,28 +1,37 @@
-import { CommonModule } from '@angular/common';
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { LobbyService } from '../../../services/lobby.service';
+import { LobbyService, Player } from '../../../services/lobby.service';
+import { ButtonComponent } from '../../shared/button/button.component';
+import { combineLatest, map, Observable } from 'rxjs';
 
 @Component({
   selector: 'lobby-players',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ButtonComponent, AsyncPipe],
   templateUrl: './players.component.html',
-  styleUrl: './players.component.scss'
+  styleUrl: './players.component.scss',
 })
 export class PlayersComponent implements OnInit, OnDestroy {
-  players: string[] = [];
+  filteredPlayers$: Observable<Player[]>;
 
-  constructor(private lobbyService: LobbyService) {}
+  constructor(private lobbyService: LobbyService) {
+    // Combine current user and players streams to filter out current user
+    this.filteredPlayers$ = combineLatest([
+      this.lobbyService.currentUser$,
+      this.lobbyService.players$,
+    ]).pipe(
+      map(([currentUser, players]) => {
+        if (!currentUser) return players;
+        return players.filter((p) => p.userId !== currentUser.userId);
+      })
+    );
+  }
 
   ngOnInit(): void {
-    // Connect to the lobby WebSocket
     this.lobbyService.connectToLobby();
-
-    // Listen for the current list of players when connected
-    this.lobbyService.onPlayerListUpdate().subscribe((players) => {
-      this.players = players;
-    });
   }
+
+  playGame(): void {}
 
   ngOnDestroy(): void {
     // Disconnect from the lobby WebSocket when the component is destroyed
