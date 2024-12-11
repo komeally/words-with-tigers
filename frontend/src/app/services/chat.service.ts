@@ -12,7 +12,10 @@ export type ChatMessage = {
   providedIn: 'root',
 })
 export class ChatService {
-  private currentUserSubject = new BehaviorSubject<{ userId: string; username: string } | null>(null);
+  private currentUserSubject = new BehaviorSubject<{
+    userId: string;
+    username: string;
+  } | null>(null);
   private messagesSubject = new BehaviorSubject<ChatMessage[]>([]);
 
   constructor(private socketService: SocketService) {}
@@ -62,11 +65,27 @@ export class ChatService {
     }
   }
 
-  // Join a specific chat room
   joinRoom(roomId: string): void {
     const socket = this.socketService.getSocket('chat');
     if (socket) {
       socket.emit('joinRoom', roomId);
+      console.log(`Joined chat room: ${roomId}`);
+    }
+  }
+
+  leaveRoom(roomId: string): void {
+    const socket = this.socketService.getSocket('chat');
+    if (socket) {
+      socket.emit('leaveRoom', roomId);
+      console.log(`Left chat room: ${roomId}`);
+    }
+  }
+
+  reconnectToRoom(roomId: string): void {
+    const socket = this.socketService.getSocket('chat');
+    if (socket) {
+      socket.emit('joinRoom', roomId); // Rejoin the chat room
+      console.log(`Reconnected to chat room: ${roomId}`);
     }
   }
 }

@@ -40,8 +40,8 @@ export class GameGateway implements OnGatewayInit {
     console.log('Gateway Initialized');
   }
 
-   // Handle new client connections
-   async handleConnection(client: Socket): Promise<void> {
+  // Handle new client connections
+  async handleConnection(client: Socket): Promise<void> {
     try {
       const playerId = client.handshake.auth.playerId; // Assuming playerId is passed during connection
       console.log(`Player connected: ${playerId}`);
@@ -70,6 +70,24 @@ export class GameGateway implements OnGatewayInit {
     }
   }
 
+  @SubscribeMessage('reconnect')
+  async handleReconnect(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { gameId: string; playerId: string },
+  ): Promise<void> {
+    try {
+      client.join(data.gameId); // Rejoin the game room
+      const gameState = await this.gameService.getGameState(data.gameId);
+
+      // Emit updated game state to the reconnecting client
+      client.emit('reconnectSuccess', gameState);
+    } catch (error) {
+      client.emit('reconnectError', {
+        message: error.message || 'Reconnect failed!',
+      });
+    }
+  }
+
   @SubscribeMessage('joinGame')
   async handleJoinGame(
     @ConnectedSocket() client: Socket,
@@ -82,14 +100,23 @@ export class GameGateway implements OnGatewayInit {
   }
 
   @SubscribeMessage('leaveGame')
-  handleLeaveGame(
+  async handleLeaveGame(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { gameId: string; playerId: string },
-  ): void {
-    client.leave(data.gameId);
-    this.server.to(data.gameId).emit('playerLeft', {
-      playerId: data.playerId,
-    });
+  ): Promise<void> {
+    try {
+      client.leave(data.gameId); // Leave the game room
+      this.server
+        .to(data.gameId)
+        .emit('playerLeft', { playerId: data.playerId });
+
+      // Optionally, mark the player as inactive
+      await this.gameService.markPlayerDisconnected(data.gameId, data.playerId);
+    } catch (error) {
+      client.emit('leaveGameError', {
+        message: error.message || 'Failed to leave game!',
+      });
+    }
   }
 
   @SubscribeMessage('placeTiles')

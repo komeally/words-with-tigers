@@ -4,7 +4,7 @@
     <div class="lobby-players">
         <div *ngFor="let player of (filteredPlayers$ | async)" class="player-item">
             <span class="player-name">{{ player.username }}</span>
-            <app-button text="Play" (buttonClick)="playGame()"></app-button>
+            <app-button text="Play" (buttonClick)="playGame(player.userId)"></app-button>
         </div>
     </div>
 </div>

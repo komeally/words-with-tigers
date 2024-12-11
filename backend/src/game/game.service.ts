@@ -24,11 +24,12 @@ export enum GameEndReason {
 export class GameService {
   constructor(
     @InjectModel(Game.name) private gameModel: Model<GameDocument>,
-    @InjectModel(GamePlayer.name) private gamePlayerModel: Model<GamePlayerDocument>,
+    @InjectModel(GamePlayer.name)
+    private gamePlayerModel: Model<GamePlayerDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly movesService: MovesService,
     private readonly boardService: BoardService,
-    private readonly chatService: ChatService
+    private readonly chatService: ChatService,
   ) {}
 
   // Retrieve a game by its ID
@@ -135,8 +136,7 @@ export class GameService {
     newGame.status = GameStatus.IN_PROGRESS;
 
     // Save the game with the updated board ID
-    await newGame.save();
-    return newGame;
+    return await newGame.save();
   }
 
   // Add a move to the game

@@ -44,9 +44,6 @@ export class ChatGateway implements OnGatewayInit {
     const user = client.data.user as UserDocument;
     const roomId = client.data.roomId || 'lobby';
   
-    // Add the user to the room
-    client.join(roomId);
-  
     // Emit current user data back to the client
     client.emit('currentUser', {
       userId: user._id.toString(),
