@@ -103,8 +103,6 @@ export class GameService {
 
   async initializeGame(createdBy: string, userIds: string[]): Promise<Game> {
     try {
-      console.log('Initializing game for:', { createdBy, userIds });
-
       // Validate player IDs
       const uniqueUserIds = [...new Set(userIds)];
       if (uniqueUserIds.length < 2) {
@@ -126,7 +124,6 @@ export class GameService {
       // Create players with proper ObjectId conversion
       const gamePlayers = await Promise.all(
         uniqueUserIds.map(async (userId) => {
-          console.log('Creating player for:', { gameId: newGame._id, userId });
           return this.gamePlayerModel.create({
             gameId: newGame._id,
             userId: new Types.ObjectId(userId), // Convert to ObjectId here
@@ -136,12 +133,9 @@ export class GameService {
         }),
       );
 
-      console.log('Created players:', gamePlayers);
-
       // Allocate initial tiles to each player
       await Promise.all(
         gamePlayers.map(async (player) => {
-          console.log('Player before allocation:', player);
           await this.allocateTiles(
             newGame._id.toString(),
             player.userId.toString(),
@@ -229,22 +223,12 @@ export class GameService {
     count: number,
   ): Promise<Tile[]> {
     try {
-      console.log('Allocating tiles for:', { gameId, userId, count });
-
       // Call the BoardService to draw tiles from the tile bag
       const drawnTiles = await this.boardService.drawTiles(gameId, count);
 
       // Convert string IDs to ObjectIds
       const gameObjectId = new Types.ObjectId(gameId);
       const userObjectId = new Types.ObjectId(userId);
-
-      // Debug logging
-      console.log('Looking for player with exact values:', {
-        gameObjectId,
-        userObjectId,
-        gameIdStr: gameObjectId.toString(),
-        userIdStr: userObjectId.toString(),
-      });
 
       // First, find all players for this game to verify data
       const allPlayers = await this.gamePlayerModel
@@ -254,33 +238,11 @@ export class GameService {
         .lean()
         .exec();
 
-      console.log('All players in game:', JSON.stringify(allPlayers, null, 2));
-
       // Attempt to find the specific player
       const player = await this.gamePlayerModel.findOne({
         gameId: gameObjectId,
         userId: userObjectId,
       });
-
-      console.log('Found player:', player); // Debug log the found player
-
-      if (!player) {
-        // Detailed error logging
-        console.error('Player lookup failed. Search criteria:', {
-          gameId: gameObjectId.toString(),
-          userId: userObjectId.toString(),
-        });
-
-        console.error(
-          'Available players:',
-          allPlayers.map((p) => ({
-            gameId: p.gameId.toString(),
-            userId: p.userId.toString(),
-          })),
-        );
-
-        throw new NotFoundException('Player not found.');
-      }
 
       // Ensure the player's rack doesn't exceed the maximum allowed tiles
       if (player.currentRack.length + drawnTiles.length > 7) {
@@ -298,12 +260,6 @@ export class GameService {
 
       // Add the mapped tiles to the player's rack
       player.currentRack.push(...rackTiles);
-
-      // Debug log before saving
-      console.log('Saving player with updated rack:', {
-        playerId: player._id,
-        rackSize: player.currentRack.length,
-      });
 
       // Save the updated player state
       await player.save();
