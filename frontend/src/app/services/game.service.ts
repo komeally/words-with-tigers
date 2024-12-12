@@ -26,6 +26,11 @@ export class GameService {
     return this.socketUserSubject.asObservable();
   }
 
+  setSocketUser(user: User): void {
+    this.socketUserSubject.next(user);
+    localStorage.setItem('socketUser', JSON.stringify(user));
+  }
+
   /** Observable for game state */
   get gameState$(): Observable<GameState | null> {
     return this.gameStateSubject.asObservable();

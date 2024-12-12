@@ -53,7 +53,6 @@ export class LobbyService {
 
   disconnectFromLobby(): void {
     this.socketService.disconnect('lobby');
-    this.socketUserSubject.next(null); // Clear the connected user
     this.playersSubject.next([]); // Clear the players list
   }
 }

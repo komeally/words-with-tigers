@@ -6,10 +6,13 @@ import { GameService } from '../../services/game.service';
 import { GameState } from '../../store/state/game.state';
 import { setGameState } from '../../store/actions/game.actions';
 import { first } from 'rxjs';
+import { BoardComponent } from './board/board.component';
+import { ChatComponent } from '../shared/chat/chat.component';
 
 @Component({
   selector: 'app-game',
   standalone: true,
+  imports: [BoardComponent, ChatComponent],
   templateUrl: './game.component.html',
   styleUrl: './game.component.scss',
 })
@@ -34,18 +37,18 @@ export class GameComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Connect to the game gateway
-    this.gameService.connectToGame(this.gameId, ''); // PlayerId will be emitted from the socketUser stream
-
-    // Wait for socketUser to be set
+    // Wait for socketUser to be set before proceeding
     this.gameService.socketUser$.pipe(first()).subscribe((socketUser) => {
       if (!socketUser || !socketUser.userId) {
-        console.error('Player ID is missing. Redirecting to login.');
+        console.error('Socket user is missing. Redirecting to login.');
         this.router.navigate(['/login']);
         return;
       }
 
       this.socketUser = socketUser;
+
+      // Connect to game gateway
+      this.gameService.connectToGame(this.gameId!, this.socketUser.userId);
 
       // Join the game chat room
       this.chatService.joinRoom(this.gameId!);
@@ -70,6 +73,8 @@ export class GameComponent implements OnInit, OnDestroy {
   fetchGameState(): void {
     this.gameService.getGameState(this.gameId!).subscribe({
       next: (gameState: GameState) => {
+        console.log("GameState:", gameState);
+        
         this.store.dispatch(setGameState({ gameState }));
       },
       error: () => {

@@ -27,6 +27,8 @@
     "@ngrx/router-store": "^18.1.1",
     "@ngrx/store": "^18.1.1",
     "@ngrx/store-devtools": "^18.1.1",
+    "@svgdotjs/svg.filter.js": "^3.0.8",
+    "@svgdotjs/svg.js": "^3.2.4",
     "express": "^4.18.2",
     "rxjs": "~7.8.0",
     "socket.io-client": "^4.8.1",
