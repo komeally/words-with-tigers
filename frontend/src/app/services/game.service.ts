@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, first, Observable } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { SocketService } from './socket.service';
 import { GameState } from '../store/state/game.state';
@@ -15,25 +15,20 @@ export interface User {
   providedIn: 'root',
 })
 export class GameService {
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  private socketUserSubject = new BehaviorSubject<User | null>(null);
   private gameStateSubject = new BehaviorSubject<GameState | null>(null);
   private gameSocket: any;
 
   constructor(private socketService: SocketService, private http: HttpClient) {}
 
-  /** Observable for current user */
-  get currentUser$(): BehaviorSubject<User | null> {
-    return this.currentUserSubject;
+  // Getters to expose observables
+  get socketUser$(): Observable<User | null> {
+    return this.socketUserSubject.asObservable();
   }
 
   /** Observable for game state */
   get gameState$(): Observable<GameState | null> {
     return this.gameStateSubject.asObservable();
-  }
-
-  /** Set the current user */
-  setCurrentUser(user: User): void {
-    this.currentUserSubject.next(user);
   }
 
   /** Set the game state */
@@ -60,8 +55,21 @@ export class GameService {
     if (socket) {
       this.gameSocket = socket;
 
-      // Join game room
-      socket.emit('joinGame', { gameId, playerId });
+      // Listen for the socketuser and set `socketUser`
+      socket.on('socketUser', (user: User) => {
+        console.log('Received socket user data:', user);
+        this.socketUserSubject.next(user);
+      });
+
+      // Emit join event only after `socketUser` is set
+      this.socketUser$.pipe(first()).subscribe((socketUser) => {
+        if (socketUser) {
+          socket.emit('joinGame', { gameId, playerId });
+          console.log(`Joined game with user ID: ${socketUser.userId}`);
+        } else {
+          console.error('Socket user is not available.');
+        }
+      });
 
       // Listen for board updates
       socket.on('updateBoard', (update: any) => this.handleBoardUpdate(update));

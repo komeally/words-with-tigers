@@ -19,7 +19,7 @@ export class Game {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   createdBy: Types.ObjectId | User;
 
-  @Prop({ type: Types.ObjectId, ref: 'Board', required: true }) // Link to the board
+  @Prop({ type: Types.ObjectId, ref: 'Board', default: null }) // Link to the board
   boardId: Types.ObjectId | Board;
 
   @Prop({ type: Date, default: null })

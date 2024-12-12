@@ -12,7 +12,7 @@ export type ChatMessage = {
   providedIn: 'root',
 })
 export class ChatService {
-  private currentUserSubject = new BehaviorSubject<{
+  private socketUserSubject = new BehaviorSubject<{
     userId: string;
     username: string;
   } | null>(null);
@@ -20,9 +20,9 @@ export class ChatService {
 
   constructor(private socketService: SocketService) {}
 
-  // Expose observables for current user and chat messages
-  get currentUser$(): Observable<{ userId: string; username: string } | null> {
-    return this.currentUserSubject.asObservable();
+  // Expose observables for Socket user and chat messages
+  get socketUser$(): Observable<{ userId: string; username: string } | null> {
+    return this.socketUserSubject.asObservable();
   }
 
   get messages$(): Observable<ChatMessage[]> {
@@ -33,9 +33,9 @@ export class ChatService {
   connect(): void {
     const socket = this.socketService.connect('chat');
     if (socket) {
-      // Listen for the current user's information
-      socket.on('currentUser', (user: { userId: string; username: string }) => {
-        this.currentUserSubject.next(user);
+      // Listen for the Socket user's information
+      socket.on('socketUser', (user: { userId: string; username: string }) => {
+        this.socketUserSubject.next(user);
       });
 
       // Listen for new messages
@@ -53,7 +53,7 @@ export class ChatService {
   // Disconnect from the chat namespace
   disconnect(): void {
     this.socketService.disconnect('chat');
-    this.currentUserSubject.next(null); // Reset current user state
+    this.socketUserSubject.next(null); // Reset Socket user state
     this.messagesSubject.next([]); // Clear messages state
   }
 

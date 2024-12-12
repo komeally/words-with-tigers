@@ -21,14 +21,14 @@ export class PlayersComponent implements OnInit, OnDestroy {
     private gameService: GameService,
     private router: Router
   ) {
-    // Combine current user and players streams to filter out current user
     this.filteredPlayers$ = combineLatest([
-      this.lobbyService.currentUser$,
+      this.lobbyService.socketUser$,
       this.lobbyService.players$,
     ]).pipe(
-      map(([currentUser, players]) => {
-        if (!currentUser) return players;
-        return players.filter((p) => p.userId !== currentUser.userId);
+      map(([socketUser, players]) => {
+        if (!players) return [];
+        if (!socketUser) return players;
+        return players.filter((p: Player) => p.userId !== socketUser.userId);
       })
     );
   }
@@ -38,25 +38,22 @@ export class PlayersComponent implements OnInit, OnDestroy {
   }
 
   playGame(opponentId: string): void {
-    this.lobbyService.currentUser$.pipe(first()).subscribe((currentUser) => {
-      if (!currentUser) {
-        console.error('Current user not found!');
+    this.lobbyService.socketUser$.pipe(first()).subscribe((socketUser) => {
+      if (!socketUser) {
+        console.error('Socket user not found!');
         return;
       }
-  
-      // Initialize the game
+
       this.gameService
-        .initializeGame(currentUser.userId, [currentUser.userId, opponentId])
+        .initializeGame(socketUser.userId, [socketUser.userId, opponentId])
         .subscribe({
           next: (game) => {
             console.log('Game initialized:', game);
-  
-            // Set global game state
+
             this.gameService.getGameState(game._id).subscribe((gameState) => {
               this.gameService.setGameState(gameState);
-  
-              // Connect to game socket and navigate to the game with gameId as a route parameter
-              this.gameService.connectToGame(game._id, currentUser.userId);
+
+              this.gameService.connectToGame(game._id, socketUser.userId);
               this.router.navigate(['/game', game._id]);
             });
           },
@@ -64,14 +61,12 @@ export class PlayersComponent implements OnInit, OnDestroy {
             console.error('Failed to initialize game:', err);
           },
         });
-  
-      // Disconnect from lobby
+
       this.lobbyService.disconnectFromLobby();
     });
   }
-  
+
   ngOnDestroy(): void {
-    // Disconnect from the lobby WebSocket when the component is destroyed
     this.lobbyService.disconnectFromLobby();
   }
 }

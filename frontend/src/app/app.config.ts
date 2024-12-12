@@ -6,6 +6,8 @@ import { provideClientHydration } from '@angular/platform-browser';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './services/auth/auth.interceptor';
+import { provideStore } from '@ngrx/store';
+import { gameReducer } from './store/reducers/game.reducer';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,5 +15,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideClientHydration(),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])), // Added withFetch() for SSR optimization
+    provideStore({game: gameReducer})
   ],
 };

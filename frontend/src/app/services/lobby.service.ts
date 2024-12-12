@@ -2,51 +2,58 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { SocketService } from './socket.service';
 
-export type Player = {
+export interface Player {
   userId: string;
   username: string;
   socketId: string;
-};
+}
 
 @Injectable({
   providedIn: 'root',
 })
+@Injectable({
+  providedIn: 'root',
+})
 export class LobbyService {
-  constructor(private socketService: SocketService) {}
-  private currentUserSubject = new BehaviorSubject<Player | null>(null);
+  private socketUserSubject = new BehaviorSubject<Player | null>(null);
   private playersSubject = new BehaviorSubject<Player[]>([]);
 
-  get currentUser$() {
-    return this.currentUserSubject.asObservable();
+  constructor(private socketService: SocketService) {}
+
+  // Getters to expose observables
+  get socketUser$(): Observable<Player | null> {
+    return this.socketUserSubject.asObservable();
   }
 
-  get players$() {
+  get players$(): Observable<Player[]> {
     return this.playersSubject.asObservable();
   }
 
-  // Connect to the lobby WebSocket namespace
   connectToLobby(): void {
     const socket = this.socketService.connect('lobby');
     if (socket) {
-      socket.on('currentPlayers', (data: { players: Player[]; currentUser: Player }) => {
-        this.currentUserSubject.next(data.currentUser);
-        this.playersSubject.next(data.players);
-        console.log('Current players:', data);
+      // Emit current user data
+      socket.on('socketUser', (socketUser: Player) => {
+        console.log('Socket User Received:', socketUser); // Debug log
+        this.socketUserSubject.next(socketUser);
       });
 
-      // Handle updates
-      socket.on('updatePlayerList', (data: { players: Player[] }) => {
+      // Emit players list
+      socket.on('currentPlayers', (data: { players: Player[] }) => {
+        console.log('Players List Received:', data.players); // Debug log
         this.playersSubject.next(data.players);
       });
-    } else {
-      console.warn('Unable to connect to lobby: invalid or expired token');
+
+      socket.on('updatePlayerList', (data: { players: Player[] }) => {
+        console.log('Updated Players List:', data.players); // Debug log
+        this.playersSubject.next(data.players);
+      });
     }
   }
 
-  // Disconnect from the lobby WebSocket namespace
   disconnectFromLobby(): void {
     this.socketService.disconnect('lobby');
-    this.currentUserSubject.next(null);
-    this.playersSubject.next([]);
+    this.socketUserSubject.next(null); // Clear the connected user
+    this.playersSubject.next([]); // Clear the players list
   }
 }

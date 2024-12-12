@@ -6,23 +6,23 @@ export type TileDocument = HydratedDocument<Tile>;
 
 @Schema()
 export class Tile {
+  @Prop({ type: String, required: true })
+  letter: string;
+
+  @Prop({ type: Number, required: true })
+  pointValue: number;
+
   @Prop({ type: Types.ObjectId, ref: 'Board', required: true })
-  boardId: Types.ObjectId | Board; // Links this tile to a specific board
+  boardId: Types.ObjectId;
 
-  @Prop({ required: true, min: 0 })
-  row: number; // Row position of the tile
+  @Prop({ type: Number, required: true }) // Position on the board
+  row: number;
 
-  @Prop({ required: true, min: 0 })
-  col: number; // Column position of the tile
-
-  @Prop({ required: true })
-  letter: string; // The letter on the tile
-
-  @Prop({ required: true })
-  pointValue: number; // The point value of the tile
+  @Prop({ type: Number, required: true }) // Position on the board
+  col: number;
 
   @Prop({ default: false })
-  isLocked: boolean; // Indicates if the tile is finalized
+  isLocked: boolean;
 }
 
 export const TileSchema = SchemaFactory.createForClass(Tile);

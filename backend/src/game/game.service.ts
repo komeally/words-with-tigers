@@ -101,42 +101,63 @@ export class GameService {
     return this.movesService.getMoves(gameId);
   }
 
-  async initializeGame(createdBy: string, playerIds: string[]): Promise<Game> {
-    // Validate player IDs
-    const uniquePlayerIds = [...new Set(playerIds)];
-    if (uniquePlayerIds.length < 2) {
-      throw new BadRequestException(
-        'At least two players are required to start a game.',
+  async initializeGame(createdBy: string, userIds: string[]): Promise<Game> {
+    try {
+      console.log('Initializing game for:', { createdBy, userIds });
+
+      // Validate player IDs
+      const uniqueUserIds = [...new Set(userIds)];
+      if (uniqueUserIds.length < 2) {
+        throw new BadRequestException(
+          'At least two players are required to start a game.',
+        );
+      }
+
+      // Create the game
+      const newGame = new this.gameModel({ createdBy });
+      await newGame.save();
+
+      // Initialize the board
+      const board = await this.boardService.initializeBoard(
+        newGame._id.toString(),
       );
+      newGame.boardId = board._id;
+
+      // Create players with proper ObjectId conversion
+      const gamePlayers = await Promise.all(
+        uniqueUserIds.map(async (userId) => {
+          console.log('Creating player for:', { gameId: newGame._id, userId });
+          return this.gamePlayerModel.create({
+            gameId: newGame._id,
+            userId: new Types.ObjectId(userId), // Convert to ObjectId here
+            currentRack: [],
+            isActive: userId === createdBy,
+          });
+        }),
+      );
+
+      console.log('Created players:', gamePlayers);
+
+      // Allocate initial tiles to each player
+      await Promise.all(
+        gamePlayers.map(async (player) => {
+          console.log('Player before allocation:', player);
+          await this.allocateTiles(
+            newGame._id.toString(),
+            player.userId.toString(),
+            7,
+          );
+        }),
+      );
+
+      newGame.status = GameStatus.IN_PROGRESS;
+
+      // Save the updated game
+      return await newGame.save();
+    } catch (error) {
+      console.error('Error initializing game:', error.stack);
+      throw new Error('Failed to initialize game.');
     }
-
-    // Create the game
-    const newGame = new this.gameModel({ createdBy });
-    await newGame.save();
-
-    // Initialize the board
-    const board = await this.boardService.initializeBoard(
-      newGame._id.toString(),
-    );
-    newGame.boardId = board._id;
-
-    // Create players and initialize their racks
-    for (const playerId of uniquePlayerIds) {
-      await this.gamePlayerModel.create({
-        gameId: newGame._id,
-        userId: playerId,
-        currentRack: [],
-        isActive: playerId === createdBy, // Set creator as the first active player
-      });
-
-      // Allocate initial tiles to the player
-      await this.allocateTiles(newGame._id.toString(), playerId, 7);
-    }
-
-    newGame.status = GameStatus.IN_PROGRESS;
-
-    // Save the game with the updated board ID
-    return await newGame.save();
   }
 
   // Add a move to the game
@@ -204,32 +225,95 @@ export class GameService {
 
   private async allocateTiles(
     gameId: string,
-    playerId: string,
+    userId: string,
     count: number,
   ): Promise<Tile[]> {
-    // Call the BoardService to draw tiles from the tile bag
-    const drawnTiles = await this.boardService.drawTiles(gameId, count);
+    try {
+      console.log('Allocating tiles for:', { gameId, userId, count });
 
-    // Retrieve the player's rack
-    const player = await this.gamePlayerModel.findOne({
-      gameId,
-      userId: playerId,
-    });
-    if (!player) throw new NotFoundException('Player not found.');
+      // Call the BoardService to draw tiles from the tile bag
+      const drawnTiles = await this.boardService.drawTiles(gameId, count);
 
-    // Ensure the player's rack doesn't exceed the maximum allowed tiles (e.g., 7)
-    if (player.currentRack.length + drawnTiles.length > 7) {
-      throw new BadRequestException('Cannot exceed the maximum rack size.');
+      // Convert string IDs to ObjectIds
+      const gameObjectId = new Types.ObjectId(gameId);
+      const userObjectId = new Types.ObjectId(userId);
+
+      // Debug logging
+      console.log('Looking for player with exact values:', {
+        gameObjectId,
+        userObjectId,
+        gameIdStr: gameObjectId.toString(),
+        userIdStr: userObjectId.toString(),
+      });
+
+      // First, find all players for this game to verify data
+      const allPlayers = await this.gamePlayerModel
+        .find({
+          gameId: gameObjectId,
+        })
+        .lean()
+        .exec();
+
+      console.log('All players in game:', JSON.stringify(allPlayers, null, 2));
+
+      // Attempt to find the specific player
+      const player = await this.gamePlayerModel.findOne({
+        gameId: gameObjectId,
+        userId: userObjectId,
+      });
+
+      console.log('Found player:', player); // Debug log the found player
+
+      if (!player) {
+        // Detailed error logging
+        console.error('Player lookup failed. Search criteria:', {
+          gameId: gameObjectId.toString(),
+          userId: userObjectId.toString(),
+        });
+
+        console.error(
+          'Available players:',
+          allPlayers.map((p) => ({
+            gameId: p.gameId.toString(),
+            userId: p.userId.toString(),
+          })),
+        );
+
+        throw new NotFoundException('Player not found.');
+      }
+
+      // Ensure the player's rack doesn't exceed the maximum allowed tiles
+      if (player.currentRack.length + drawnTiles.length > 7) {
+        throw new BadRequestException('Cannot exceed the maximum rack size.');
+      }
+
+      // Map drawn tiles to include placeholder values
+      const rackTiles: Tile[] = drawnTiles.map((tile) => ({
+        ...tile,
+        boardId: null,
+        row: null,
+        col: null,
+        isLocked: false,
+      }));
+
+      // Add the mapped tiles to the player's rack
+      player.currentRack.push(...rackTiles);
+
+      // Debug log before saving
+      console.log('Saving player with updated rack:', {
+        playerId: player._id,
+        rackSize: player.currentRack.length,
+      });
+
+      // Save the updated player state
+      await player.save();
+
+      return rackTiles;
+    } catch (error) {
+      console.error('Error in allocateTiles:', error);
+      console.error('Stack trace:', error.stack);
+      throw error;
     }
-
-    // Add the drawn tiles to the player's rack
-    player.currentRack.push(...drawnTiles);
-
-    // Save the updated player state
-    await player.save();
-
-    // Return the drawn tiles
-    return drawnTiles;
   }
 
   private generateWordTiles(
@@ -320,7 +404,12 @@ export class GameService {
       throw new BadRequestException("It's not your turn");
 
     const board = game.boardId as BoardDocument;
-    let tilesWithIds: { row: number; col: number; tileId: string }[] = [];
+    let tilesWithIds: {
+      row: number;
+      col: number;
+      letter: string;
+      tileId: string;
+    }[] = [];
     let tilesDrawn: Tile[] = [];
     let words: string[] = [];
 
@@ -355,14 +444,24 @@ export class GameService {
             board._id.toString(),
             tile.row,
             tile.col,
-            tile.letter,
+            tile.letter, // Use letter to find the tile
           );
-          return { ...tile, tileId };
+
+          // Return the mapped object with row, col, letter, and tileId
+          return {
+            row: tile.row,
+            col: tile.col,
+            letter: tile.letter, // Preserve the original letter
+            tileId, // Include the tileId
+          };
         }),
       );
 
       // Place tiles on the board
-      await this.boardService.placeTiles(board._id.toString(), tilesWithIds);
+      await this.boardService.placeTiles(
+        board._id.toString(),
+        tilesWithIds, // Now includes row, col, letter, and tileId
+      );
 
       // Generate words from the placed tiles
       words = await this.boardService.generateWords(
@@ -393,7 +492,10 @@ export class GameService {
     }
 
     // Lock the tiles on the board
-    await this.boardService.lockTiles(board._id.toString(), tiles);
+    await this.boardService.lockTiles(
+      board._id.toString(),
+      tiles.map(({ row, col }) => ({ row, col })),
+    );
 
     // Check if game has ended after locking tiles
     if (await this.isGameEnded(gameId)) return { move, tilesDrawn };

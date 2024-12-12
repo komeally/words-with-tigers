@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
 import { Router } from '@angular/router';
-import { interval, Subject } from 'rxjs';
+import { BehaviorSubject, interval, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 const BACKEND_URL = 'http://localhost:3000';
@@ -13,6 +13,8 @@ export class SocketService {
   private connections: { [namespace: string]: Socket } = {}; // Store multiple sockets
   private readonly checkInterval = 10000; // Check every 10 seconds
   private stop$ = new Subject<void>();
+  private socketUserSubjects: { [namespace: string]: BehaviorSubject<any> } =
+    {};
 
   constructor(private router: Router) {
     this.startTokenMonitoring();
@@ -61,6 +63,11 @@ export class SocketService {
     // Store the connection
     this.connections[namespace] = socket;
 
+    // Initialize a subject for the Socket user if not already present
+    if (!this.socketUserSubjects[namespace]) {
+      this.socketUserSubjects[namespace] = new BehaviorSubject<any>(null);
+    }
+
     socket.on('connect', () => {
       console.log(`Connected to ${namespace} namespace`);
     });
@@ -78,6 +85,7 @@ export class SocketService {
     if (socket) {
       socket.disconnect();
       delete this.connections[namespace];
+      delete this.socketUserSubjects[namespace];
     }
   }
 
@@ -89,5 +97,30 @@ export class SocketService {
 
   getSocket(namespace: string): Socket | null {
     return this.connections[namespace] || null;
+  }
+
+  // Centralized method to fetch the Socket user for a namespace
+  getSocketUser(namespace: string): BehaviorSubject<any> {
+    const socket = this.connections[namespace];
+    if (!socket) {
+      throw new Error(`Cannot connect to namespace: ${namespace}`);
+    }
+
+    if (!this.socketUserSubjects[namespace]) {
+      this.socketUserSubjects[namespace] = new BehaviorSubject<any>(null);
+    }
+
+    const subject = this.socketUserSubjects[namespace];
+
+    // Listen for the "socketUser" event and update the subject
+    socket.on('socketUser', (socketUser) => {
+      console.log(
+        `Received Socket user for namespace ${namespace}:`,
+        socketUser
+      );
+      subject.next(socketUser);
+    });
+
+    return subject;
   }
 }

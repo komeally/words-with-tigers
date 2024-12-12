@@ -14,7 +14,7 @@ import { FormsModule } from '@angular/forms';
 export class ChatComponent implements OnInit, OnDestroy {
   messageContent: string = '';
   messages: ChatMessage[] = []; // Store chat messages
-  currentUser: { userId: string; username: string } | null = null; // Store the current user
+  socketUser: { userId: string; username: string } | null = null; // Store the Socket user
 
   constructor(private chatService: ChatService) {}
 
@@ -28,9 +28,9 @@ export class ChatComponent implements OnInit, OnDestroy {
       this.messages = messages;
     });
 
-    // Subscribe to current user stream
-    this.chatService.currentUser$.subscribe((currentUser) => {
-      this.currentUser = currentUser;
+    // Subscribe to Socket user stream
+    this.chatService.socketUser$.subscribe((socketUser) => {
+      this.socketUser = socketUser;
     });
   }
 
@@ -41,8 +41,8 @@ export class ChatComponent implements OnInit, OnDestroy {
     }
   }
 
-  isCurrentUser(userId: string): boolean {
-    return this.currentUser?.userId === userId;
+  issocketUser(userId: string): boolean {
+    return this.socketUser?.userId === userId;
   }
 
   ngOnDestroy(): void {

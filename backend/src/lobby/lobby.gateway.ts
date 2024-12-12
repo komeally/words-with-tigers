@@ -38,31 +38,33 @@ export class LobbyGateway implements OnGatewayInit {
     console.log('Gateway Initialized');
   }
 
-  handleConnection(@ConnectedSocket() client: Socket) {
+  async handleConnection(@ConnectedSocket() client: Socket) {
     const user = client.data.user as UserDocument;
     const player: Player = {
       userId: user._id.toString(),
       username: user.username,
       socketId: client.id,
     };
-  
-    console.log(`Client connected: ${player.username}`);
+
     client.join('lobby');
   
-    // Add player first
+    // Emit `socketUser` to the client
+    client.emit('socketUser', {
+      userId: user._id.toString(),
+      username: user.username,
+    });
+  
+    // Add player to the lobby and broadcast updates
     this.lobbyService.addPlayer(player);
-    // Then get the updated list
     const updatedPlayers = this.lobbyService.getPlayers();
-
-    // Emit to the connecting client their initial state
+  
     client.emit('currentPlayers', {
       players: updatedPlayers,
-      currentUser: player,
+      socketUser: player,
     });
-    
-    // Broadcast to other clients that a new player joined
+  
     client.broadcast.to('lobby').emit('updatePlayerList', {
-      players: updatedPlayers
+      players: updatedPlayers,
     });
   }
 
@@ -78,7 +80,7 @@ export class LobbyGateway implements OnGatewayInit {
       // Broadcast to remaining clients
       this.server.to('lobby').emit('updatePlayerList', {
         players: updatedPlayers,
-        currentUsername: '', // Empty string for disconnect events
+        socketUsername: '', // Empty string for disconnect events
       });
     }
   }

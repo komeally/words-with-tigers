@@ -9,6 +9,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { GameService } from './game.service';
+import { UserDocument } from 'src/users/schemas/user.schema';
 
 @WebSocketGateway({
   namespace: '/game',
@@ -41,11 +42,19 @@ export class GameGateway implements OnGatewayInit {
   }
 
   // Handle new client connections
-  async handleConnection(client: Socket): Promise<void> {
+  async handleConnection(@ConnectedSocket() client: Socket): Promise<void> {
     try {
-      const playerId = client.handshake.auth.playerId; // Assuming playerId is passed during connection
-      console.log(`Player connected: ${playerId}`);
-      client.emit('connectionSuccess', { message: 'Connected to game server' });
+      const user = client.data.user as UserDocument;
+      console.log(`Player ${user.username} connected.`);
+      
+      client.emit('socketUser', {
+        userId: user._id.toString(),
+        username: user.username,
+      });
+
+      client.emit('connectionSuccess', {
+        message: 'Connected to game server',
+      });
     } catch (error) {
       console.error(`Error during connection: ${error.message}`);
       client.disconnect();

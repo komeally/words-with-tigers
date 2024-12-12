@@ -43,22 +43,19 @@ export class ChatGateway implements OnGatewayInit {
   async handleConnection(@ConnectedSocket() client: Socket) {
     const user = client.data.user as UserDocument;
     const roomId = client.data.roomId || 'lobby';
-  
-    // Emit current user data back to the client
-    client.emit('currentUser', {
+
+    console.log(`User ${user.username} connected to room ${roomId}`);
+    client.join(roomId);
+
+    // Emit `socketUser` to the client
+    client.emit('socketUser', {
       userId: user._id.toString(),
       username: user.username,
     });
-  
-    // Retrieve past messages in the room
+
+    // Send chat history
     const messages = await this.chatService.getMessages(roomId);
-  
-    // Send chat history to the connected client
     client.emit('loadChatHistory', messages);
-  
-    console.log(
-      `User ${user.username} connected to room ${roomId}`,
-    );
   }
 
   @SubscribeMessage('sendMessage')

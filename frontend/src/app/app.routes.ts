@@ -8,7 +8,7 @@ import { GameComponent } from './components/game/game.component';
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'lobby', component: LobbyComponent, canActivate: [AuthGuard] },
-  { path: 'game/:id', component: GameComponent, canActivate: [AuthGuard] },
+  { path: 'game/:gameId', component: GameComponent, canActivate: [AuthGuard] },
   { path: '', canActivate: [AuthGuard], component: LobbyComponent },  // Root path guarded
   { path: '**', redirectTo: 'login' },  // Redirect unknown routes to login
 ];

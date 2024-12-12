@@ -46,78 +46,44 @@ export class BoardService {
     gameId: string,
     boardSize: number = 15,
   ): Promise<BoardDocument> {
-    const boardState: Record<string, any> = {};
+    try {
+      const boardState: Record<string, any> = {};
 
-    // Initialize boardState with empty positions
-    for (let row = 0; row < boardSize; row++) {
-      for (let col = 0; col < boardSize; col++) {
-        boardState[`${row},${col}`] = null;
+      // Step 1: Initialize the board state with empty positions
+      for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+          boardState[`${row},${col}`] = null;
+        }
       }
-    }
 
-    // Create a new board document
-    const newBoard = new this.boardModel({
-      gameId,
-      boardState,
-      boardSize,
-      tileBag: [], // Initialize the tileBag as empty
-    });
+      // Step 2: Populate the tileBag for the board
+      const tileDistribution = [
+        { letter: 'E', pointValue: 1, count: 13 },
+        { letter: 'A', pointValue: 1, count: 9 },
+        { letter: 'I', pointValue: 1, count: 8 },
+        // Add other letters...
+      ];
 
-    const savedBoard = await newBoard.save();
-
-    // Tile distribution setup
-    const tileDistribution = [
-      { letter: 'E', pointValue: 1, count: 13 },
-      { letter: 'A', pointValue: 1, count: 9 },
-      { letter: 'I', pointValue: 1, count: 8 },
-      { letter: 'O', pointValue: 1, count: 8 },
-      { letter: 'T', pointValue: 1, count: 7 },
-      { letter: 'R', pointValue: 1, count: 6 },
-      { letter: 'S', pointValue: 1, count: 5 },
-      { letter: 'D', pointValue: 2, count: 5 },
-      { letter: 'N', pointValue: 2, count: 5 },
-      { letter: 'L', pointValue: 2, count: 4 },
-      { letter: 'U', pointValue: 2, count: 4 },
-      { letter: 'H', pointValue: 3, count: 4 },
-      { letter: 'G', pointValue: 3, count: 3 },
-      { letter: 'Y', pointValue: 3, count: 2 },
-      { letter: 'B', pointValue: 4, count: 2 },
-      { letter: 'C', pointValue: 4, count: 2 },
-      { letter: 'F', pointValue: 4, count: 2 },
-      { letter: 'M', pointValue: 4, count: 2 },
-      { letter: 'P', pointValue: 4, count: 2 },
-      { letter: 'W', pointValue: 4, count: 2 },
-      { letter: 'V', pointValue: 5, count: 2 },
-      { letter: 'K', pointValue: 5, count: 1 },
-      { letter: 'X', pointValue: 8, count: 1 },
-      { letter: 'J', pointValue: 10, count: 1 },
-      { letter: 'Q', pointValue: 10, count: 1 },
-      { letter: 'Z', pointValue: 10, count: 1 },
-    ];
-
-    // Create tiles and update tileBag
-    const tilesToInsert = [];
-    for (const tile of tileDistribution) {
-      for (let i = 0; i < tile.count; i++) {
-        tilesToInsert.push({
-          boardId: savedBoard._id,
-          row: null, // Unassigned until placed on the board
-          col: null,
-          letter: tile.letter,
-          pointValue: tile.pointValue,
-          isLocked: false,
-        });
+      const tileBag = [];
+      for (const tile of tileDistribution) {
+        for (let i = 0; i < tile.count; i++) {
+          tileBag.push({ letter: tile.letter, pointValue: tile.pointValue });
+        }
       }
+
+      // Step 3: Create and save the board
+      const newBoard = new this.boardModel({
+        gameId,
+        boardState,
+        boardSize,
+        tileBag, // Embedded tiles
+      });
+
+      return await newBoard.save();
+    } catch (error) {
+      console.error('Error initializing board:', error.stack);
+      throw new Error('Failed to initialize board.');
     }
-
-    // Insert tiles into the database
-    const insertedTiles = await this.tileModel.insertMany(tilesToInsert);
-
-    // Update the tileBag of the board with the IDs of the inserted tiles
-    savedBoard.tileBag = insertedTiles.map((tile) => tile._id);
-    await savedBoard.save();
-
-    return savedBoard;
   }
 
   async updateBoardState(
@@ -138,7 +104,7 @@ export class BoardService {
         // Remove the tile from the boardState
         boardState[positionKey] = null;
       } else {
-        // Retrieve the tile to update boardState with its letter
+        // Retrieve the placed tile to update boardState
         const tile = await this.tileModel.findById(tileId).exec();
         if (!tile) {
           throw new NotFoundException(`Tile with ID ${tileId} not found.`);
@@ -236,29 +202,28 @@ export class BoardService {
 
   async placeTiles(
     boardId: string,
-    tiles: { row: number; col: number; tileId?: string }[],
+    tiles: { row: number; col: number; letter: string; tileId: string }[],
   ): Promise<void> {
-    for (const { row, col, tileId } of tiles) {
-      if (!tileId) {
-        // Remove the tile if tileId is null or undefined
-        await this.tileModel.deleteOne({ boardId, row, col });
-      } else {
-        const boardTile = await this.tileModel.findOne({ boardId, row, col });
-        if (boardTile && boardTile.isLocked) {
-          throw new BadRequestException(
-            `Tile at row ${row}, col ${col} is locked.`,
-          );
-        }
-        await this.tileModel.updateOne(
-          { boardId, row, col },
-          { tileId, isLocked: false },
-          { upsert: true },
+    for (const { row, col, letter, tileId } of tiles) {
+      // Handle tile placement logic here
+      const boardTile = await this.tileModel.findOne({ boardId, row, col });
+      if (boardTile && boardTile.isLocked) {
+        throw new BadRequestException(
+          `Tile at row ${row}, col ${col} is locked.`,
         );
       }
+
+      await this.tileModel.updateOne(
+        { boardId, row, col },
+        { letter, tileId, isLocked: false },
+        { upsert: true },
+      );
     }
 
-    // Centralized update for boardState
-    await this.updateBoardState(boardId, tiles);
+    await this.updateBoardState(
+      boardId,
+      tiles.map(({ row, col, letter }) => ({ row, col, letter })),
+    );
   }
 
   async lockTiles(
@@ -275,27 +240,30 @@ export class BoardService {
   }
 
   async drawTiles(gameId: string, count: number): Promise<Tile[]> {
-    // Retrieve the current board by gameId
+    // Retrieve the board for the game
     const board = await this.boardModel.findOne({ gameId });
     if (!board) throw new NotFoundException('Board not found.');
 
-    // Ensure there are enough tiles left
+    // Ensure there are enough tiles in the tile bag
     if (board.tileBag.length < count) {
       throw new BadRequestException('Not enough tiles remaining.');
     }
 
-    // Shuffle and draw the requested number of tiles
+    // Randomly draw tiles
     const drawnTiles = [];
     for (let i = 0; i < count; i++) {
       const randomIndex = Math.floor(Math.random() * board.tileBag.length);
-      const [tile] = board.tileBag.splice(randomIndex, 1);
+      const [tile] = board.tileBag.splice(randomIndex, 1); // Remove tile from tileBag
       drawnTiles.push(tile);
     }
 
-    // Save the updated board state
-    await board.save();
+    // Update the board's tileBag atomically
+    await this.boardModel.findOneAndUpdate(
+      { _id: board._id },
+      { tileBag: board.tileBag }, // Update with the modified tileBag
+      { new: true }, // Return the updated document
+    );
 
-    // Return the drawn tiles
     return drawnTiles;
   }
 
